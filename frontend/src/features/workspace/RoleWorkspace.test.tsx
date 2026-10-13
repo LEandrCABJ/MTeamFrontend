@@ -113,3 +113,18 @@ describe('shell autenticado', () => {
     expect(await screen.findByText('Pantalla de ingreso')).toBeInTheDocument()
   })
 })
+
+
+describe.each([
+  ['MEMBER', '/socio/notificaciones'], ['TRAINER', '/entrenador/notificaciones'],
+] as const)('notification navigation for %s', (role, route) => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+  it.each([false, true])('uses the shared inbox with mobile=%s', async isMobile => {
+    setMobileViewport(isMobile)
+    stubApi([{ path: '/notifications', handler: () => ({ body: { items: [], page: 1, limit: 20, total: 0 } }) }])
+    renderWorkspace(route, role)
+    expect(await screen.findByText('No ten\u00e9s notificaciones para mostrar.')).toBeInTheDocument()
+    expect(screen.getByText('Avisos de tu cuenta y novedades operativas.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Marcar todas como le\u00eddas' })).toBeDisabled()
+  })
+})

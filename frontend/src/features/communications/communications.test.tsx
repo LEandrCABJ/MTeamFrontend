@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSession, stubApi, testUser } from '../../test/test-utils'
 import { EventsScreen } from './EventsScreen'
@@ -10,6 +10,7 @@ const news = { id: 'news-1', title: 'Feriado', content: 'La sede permanecerá ce
 const notification = { id: 'notification-1', userId: 'member-id', title: 'Apto médico aprobado', message: 'Tu apto fue aprobado.', type: 'MEDICAL_CERTIFICATE_REVIEWED' as const, createdAt: '2030-09-01T12:00:00.000Z', readAt: null }
 
 afterEach(() => {
+  cleanup()
   vi.unstubAllGlobals()
 })
 
@@ -48,5 +49,52 @@ describe('communications screens', () => {
     expect(await screen.findByText('Apto médico aprobado')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Marcar como leída' }))
     await waitFor(() => expect(fetchStub).toHaveBeenCalledWith(expect.stringContaining('/notifications/notification-1/read-status'), expect.objectContaining({ method: 'PATCH' })))
+  })
+})
+
+
+describe.each(['MEMBER', 'TRAINER'] as const)('shared notifications inbox for %s', (role) => {
+  it('shows reading states and preserves the API newest-first order and history', async () => {
+    let isRead = false
+    stubApi([
+      { path: '/notifications', handler: () => ({ body: { items: [{ ...notification, readAt: isRead ? '2030-09-02T12:00:00Z' : null }, { ...notification, id: 'older', title: 'Aviso anterior', createdAt: '2030-08-01T12:00:00Z', readAt: '2030-08-02T12:00:00Z' }], page: 1, limit: 20, total: 2 } }) },
+      { method: 'PATCH', path: '/notifications/notification-1/read-status', handler: () => { isRead = true; return { status: 204 } } },
+    ])
+    renderWithSession(<NotificationsScreen/>, { user: testUser(role) })
+    expect(await screen.findByText('No leída')).toBeInTheDocument()
+    expect(screen.getAllByRole('article').map(item => item.querySelector('h2')?.textContent)).toEqual([notification.title, 'Aviso anterior'])
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar como leída' }))
+    expect(await screen.findByText('Notificación marcada como leída.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('No leída')).not.toBeInTheDocument())
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+  })
+
+  it('shows loading and an empty inbox', async () => {
+    stubApi([{ path: '/notifications', handler: () => ({ body: { items: [], page: 1, limit: 20, total: 0 } }) }])
+    renderWithSession(<NotificationsScreen/>, { user: testUser(role) })
+    expect(screen.getByText('Cargando notificaciones…')).toBeInTheDocument()
+    expect(await screen.findByText('No tenés notificaciones para mostrar.')).toBeInTheDocument()
+  })
+
+  it('retries a failed query', async () => {
+    let hasFailed = false
+    stubApi([{ path: '/notifications', handler: () => { if (!hasFailed) { hasFailed = true; return { status: 500, body: { message: 'Error de conexión' } } } return { body: { items: [notification], page: 1, limit: 20, total: 1 } } } }])
+    renderWithSession(<NotificationsScreen/>, { user: testUser(role) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText(notification.title)).toBeInTheDocument()
+  })
+
+  it('retries a failed read action without reporting false success', async () => {
+    let hasFailed = false
+    stubApi([
+      { path: '/notifications', handler: () => ({ body: { items: [notification], page: 1, limit: 20, total: 1 } }) },
+      { method: 'PATCH', path: '/notifications/notification-1/read-status', handler: () => { if (!hasFailed) { hasFailed = true; return { status: 500 } } return { status: 204 } } },
+    ])
+    renderWithSession(<NotificationsScreen/>, { user: testUser(role) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como leída' }))
+    expect(await screen.findByText('No se pudo guardar el estado de lectura. Intentá nuevamente.')).toBeInTheDocument()
+    expect(screen.queryByText('Notificación marcada como leída.')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText('Notificación marcada como leída.')).toBeInTheDocument()
   })
 })
