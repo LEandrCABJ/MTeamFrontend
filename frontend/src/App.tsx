@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ChangePasswordPage } from './features/authentication/ChangePasswordPage'
 import { LoginPage } from './features/authentication/LoginPage'
+import { ResetPasswordPage } from './features/authentication/ResetPasswordPage'
 import { ProtectedRoute } from './features/authentication/ProtectedRoute'
 import { RegisterPage } from './features/authentication/RegisterPage'
 import { PublicSite } from './features/public-site/PublicSite'
@@ -23,6 +24,7 @@ function App() {
       <Route path="/eventos" element={<PublicSite />} />
       <Route path="/novedades" element={<PublicSite />} />
       <Route path="/iniciar-sesion" element={<LoginPage />} />
+      <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
       <Route path="/crear-cuenta" element={<RegisterPage />} />
       <Route element={<ProtectedRoute allowPasswordChange />}>
         <Route path="/cambiar-contrasena" element={<ChangePasswordPage />} />

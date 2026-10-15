@@ -29,6 +29,30 @@ describe('servicio de autenticación real', () => {
     vi.unstubAllGlobals()
   })
 
+  it('solicita recuperación sin enviar credenciales de sesión', async () => {
+    authStorage.write(loginResponse, false)
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ message: 'Si el correo corresponde a una cuenta activa, recibirás un enlace.' }), { status: 202 }))
+    await authService.requestRecovery('persona@example.com')
+    const [url, options] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toBe('http://localhost:3000/api/auth/password-recovery')
+    expect(new Headers(options?.headers).has('Authorization')).toBe(false)
+    expect(JSON.parse(options?.body as string)).toEqual({ email: 'persona@example.com' })
+  })
+
+  it('propaga fallos de envío sin simular éxito', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE', message: 'No pudimos enviar el correo.' }), { status: 503 }))
+    await expect(authService.requestRecovery('persona@example.com')).rejects.toMatchObject({ status: 503, code: 'SERVICE_UNAVAILABLE' })
+  })
+
+  it('completa recuperación sin autenticación y sin devolver una sesión', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }))
+    await expect(authService.completeRecovery('a'.repeat(64), 'new-password')).resolves.toBeUndefined()
+    const [url, options] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toBe('http://localhost:3000/api/auth/password-recovery/complete')
+    expect(new Headers(options?.headers).has('Authorization')).toBe(false)
+    expect(JSON.parse(options?.body as string)).toEqual({ token: 'a'.repeat(64), newPassword: 'new-password' })
+  })
+
   it('procesa un login correcto contra /auth/login', async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(loginResponse), { status: 200 }))
     await expect(authService.login({ email: 'lara@example.com', password: 'valid-password' })).resolves.toEqual(loginResponse)
