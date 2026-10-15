@@ -73,7 +73,7 @@ Socios y entrenadores consultan sus avisos internos en `/socio/notificaciones` y
 
 ### Notificaciones contra el backend real
 
-`e2e/real-backend/notifications.real.spec.ts` ejecuta el navegador contra el backend real y una base PostgreSQL local **descartable** (nada simulado): el administrador dispara por API los eventos reales (aumento de cuota, revisión de apto, cancelación de eventos, cambios de clases) y cada usuario lee sus avisos en la interfaz, los marca como leídos y comprueba que persisten.
+`e2e/real-backend/notifications.real.spec.ts` ejecuta el navegador contra el backend real y una base PostgreSQL local **descartable** (nada simulado). El administrador dispara los eventos reales (desde sus pantallas: cancelar un evento, rechazar un apto y cambiar el valor de la cuota; por API: las clases), y cada usuario lee sus avisos en la interfaz, en escritorio y en celular. El spec comprueba con SQL de solo lectura lo que quedó guardado (`read_at`, conteos y claves de deduplicación): usa el `pg` de la carpeta del backend indicada en el archivo de fixture y solo acepta una base local con `test` en el nombre. Los casos comparten estado y corren en orden, así que hay que volver a ejecutar el seed antes de repetirlos.
 
 1. Base local de pruebas (el nombre debe contener `test`; nunca apuntar a Supabase ni a una base compartida):
 
