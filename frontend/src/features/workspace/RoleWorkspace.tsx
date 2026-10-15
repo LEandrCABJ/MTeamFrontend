@@ -77,7 +77,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
       if (role === 'TRAINER') return <TrainerDashboardScreen/>
       return <MemberDashboardScreen/>
     }
-    if (segment === 'perfil') return <ProfileScreen role={role} onPasswordChange={() => navigate('/cambiar-contrasena-voluntario')}/>
+    if (segment === 'perfil') return <ProfileScreen role={role} onPasswordChange={() => navigate('/cambiar-contrasena-voluntario')} onLogout={() => void handleLogout()}/>
     if (segment === 'clases') return <WeeklyScheduleScreen variant={role === 'ADMIN' ? 'admin' : role === 'TRAINER' ? 'trainer' : 'member'}/>
     if (role === 'MEMBER' && segment === 'pagos') return <MemberPaymentsScreen/>
     if (role === 'MEMBER' && segment === 'apto-medico') return <MemberMedicalCertificateScreen/>

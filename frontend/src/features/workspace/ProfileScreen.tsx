@@ -1,6 +1,7 @@
 import { useCallback, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../authentication/auth-types'
+import { useAuth } from '../authentication/use-auth'
 import { useApiResource } from '../../hooks/use-api-resource'
 import { backendApi, type OwnMedicalCertificateView, type OwnMembership, type OwnProfile, type Page, type Payment } from '../../service/backend-api'
 import { formatDate, formatDateTime } from '../../service/date-time'
@@ -8,7 +9,7 @@ import { formatMoney } from '../dashboard/dashboard-data'
 import { ErrorState, LoadingState } from './ApiStates'
 import { Icon } from './Icon'
 import { PageHeader } from './PageHeader'
-import { SafeImage } from './SafeImage'
+import { UserAvatar } from './UserAvatar'
 import './profile.css'
 
 interface MemberProfileData {
@@ -31,7 +32,8 @@ async function loadMemberProfileData(): Promise<MemberProfileData> {
   return { membership, payments, medical }
 }
 
-export function ProfileScreen({ role, onPasswordChange }: { role: UserRole; onPasswordChange: () => void }) {
+export function ProfileScreen({ role, onPasswordChange, onLogout }: { role: UserRole; onPasswordChange: () => void; onLogout: () => void }) {
+  const { updateProfilePhoto } = useAuth()
   const loader = useCallback(async (): Promise<ProfilePageData> => {
     const [profile, member] = await Promise.all([
       backendApi.getOwnProfile(),
@@ -52,8 +54,12 @@ export function ProfileScreen({ role, onPasswordChange }: { role: UserRole; onPa
           member={data.member}
           role={role}
           onPasswordChange={onPasswordChange}
-          onUpdated={(profile) => setData((current) => current ? { ...current, profile } : current)}
+          onUpdated={(profile) => {
+            setData((current) => current ? { ...current, profile } : current)
+            updateProfilePhoto(profile.photoUrl)
+          }}
         />}
+    {role !== 'ADMIN' && <button type="button" className="button button-secondary profile-mobile-logout" onClick={onLogout}><Icon name="logout" size={20}/>Cerrar sesión</button>}
   </div>
 }
 
@@ -172,7 +178,7 @@ function ProfileIdentityCard({ profile, role, onUpdated }: { profile: OwnProfile
   }
 
   return <section className="surface-card profile-section profile-identity-section" aria-label="Resumen del perfil">
-    <div className="profile-identity-avatar">{profile.photoUrl ? <SafeImage className="profile-photo" src={profile.photoUrl} alt={`Foto de ${profile.firstName} ${profile.lastName}`} fallbackIcon="user"/> : <span>{profile.firstName[0]}{profile.lastName[0]}</span>}</div>
+    <div className="profile-identity-avatar"><UserAvatar {...profile} className="profile-photo"/></div>
     <h2>{profile.firstName} {profile.lastName}</h2>
     <span className="member-status">{role === 'MEMBER' ? 'Socio' : role === 'TRAINER' ? 'Entrenador' : 'Administrador'} · Cuenta {profile.status === 'ACTIVE' ? 'activa' : 'inactiva'}</span>
     <label className="button button-secondary profile-photo-action" htmlFor="profile-photo"><Icon name="image" size={18}/>{photoSaving ? 'Subiendo…' : 'Cambiar fotografía'}</label>

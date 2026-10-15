@@ -9,6 +9,7 @@ export interface AuthUser {
   role: UserRole
   status: UserStatus
   isPasswordChangeRequired: boolean
+  photoUrl?: string | null
 }
 
 export interface LoginCredentials {

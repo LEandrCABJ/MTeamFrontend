@@ -112,7 +112,7 @@ describe('shell autenticado', () => {
   it('redirige cuando el rol de la sesión no coincide', async () => {
     stubApi([{ path: '/weekly-schedules', handler: () => ({ body: { id: null, weekStartsOn: '2026-09-07', classes: [] } }) }])
     renderWorkspace('/admin/usuarios', 'ADMIN', 'TRAINER')
-    await waitFor(() => expect(screen.getByText('Tomás Prueba')).toBeInTheDocument())
+    await waitFor(() => expect(within(document.querySelector('.app-sidebar-user') as HTMLElement).getByText('Tomás Prueba')).toBeInTheDocument())
     const sidebar = screen.getByRole('navigation', { name: 'Navegación principal' })
     expect(within(sidebar).getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page')
   })

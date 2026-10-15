@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { AuthUser } from '../authentication/auth-types'
 import { Icon } from './Icon'
+import { UserAvatar } from './UserAvatar'
 import { NAVIGATION, ROLE_BASE, ROLE_LABEL, hrefFor, type NavEntry } from './navigation'
 
 export function WorkspaceSidebar({ user, active, onLogout }: { user: AuthUser; active: NavEntry; onLogout: () => void }) {
@@ -21,7 +22,7 @@ export function WorkspaceSidebar({ user, active, onLogout }: { user: AuthUser; a
     </nav>
     <div className="app-sidebar-footer">
       <div className="app-sidebar-user">
-        <span className="app-avatar" aria-hidden="true">{user.firstName.slice(0, 1)}{user.lastName.slice(0, 1)}</span>
+        <UserAvatar {...user}/>
         <div>
           <strong>{user.firstName} {user.lastName}</strong>
           <small>{ROLE_LABEL[role]}</small>

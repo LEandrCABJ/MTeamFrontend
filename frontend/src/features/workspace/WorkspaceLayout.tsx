@@ -5,6 +5,7 @@ import { Icon } from './Icon'
 import { MobileTabBar } from './MobileTabBar'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import type { NavEntry } from './navigation'
+import './workspace-user.css'
 
 export function WorkspaceLayout({ user, active, title, notice, onDismissNotice, onLogout, mobileBackHref, mobileTitle, children }: {
   user: AuthUser
