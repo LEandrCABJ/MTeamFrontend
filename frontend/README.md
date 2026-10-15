@@ -22,7 +22,7 @@ URLs de PostgreSQL, claves privadas de Supabase ni credenciales de Storage.
 - `npm.cmd test`: ejecuta las pruebas automatizadas.
 - `npm.cmd run test:e2e`: ejecuta los flujos de navegador con Playwright. En Windows usa Microsoft Edge; en otros sistemas necesita Chromium instalado con `npx playwright install chromium`.
 
-Las pruebas E2E de autenticación y acreditación de pagos simulan las respuestas de la API y bloquean cualquier otra llamada de red. La prueba de acceso QR también simula el permiso de cámara denegado. No necesitan cuentas reales, el backend ni Supabase, y no modifican datos. Validan recorridos de la interfaz; la integración real con PostgreSQL/Supabase se ejecuta por separado desde el backend.
+Las pruebas E2E de autenticación, acreditación de pagos y consulta de eventos simulan las respuestas de la API y bloquean cualquier otra llamada de red. La prueba de acceso QR también simula el permiso de cámara denegado. No necesitan cuentas reales, el backend ni Supabase, y no modifican datos. Validan recorridos de la interfaz; la integración real con PostgreSQL/Supabase se ejecuta por separado desde el backend.
 
 ## Módulo de autenticación
 
