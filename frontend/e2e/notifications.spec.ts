@@ -25,7 +25,7 @@ function memberWithTwoNotifications() {
   return api
 }
 
-test.describe('bandeja de notificaciones (escritorio)', () => {
+test.describe('[API simulada] bandeja de notificaciones (escritorio)', () => {
   test('el socio consulta sus notificaciones, marca una como leída y el estado persiste al recargar', async ({ page }) => {
     const api = memberWithTwoNotifications()
     await api.install(page)
@@ -192,7 +192,7 @@ test.describe('bandeja de notificaciones (escritorio)', () => {
   })
 })
 
-test.describe('bandeja de notificaciones (celular)', () => {
+test.describe('[API simulada] bandeja de notificaciones (celular)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
   test('se llega desde la campana de la barra superior, se lee y se marca sin desbordes', async ({ page }) => {
