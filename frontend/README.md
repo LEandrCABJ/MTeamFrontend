@@ -20,6 +20,9 @@ URLs de PostgreSQL, claves privadas de Supabase ni credenciales de Storage.
 - `npm.cmd run build`: valida TypeScript y genera la aplicación.
 - `npm.cmd run lint`: ejecuta las reglas de calidad.
 - `npm.cmd test`: ejecuta las pruebas automatizadas.
+- `npm.cmd run test:e2e`: ejecuta los flujos de navegador con Playwright. En Windows usa Microsoft Edge; en otros sistemas necesita Chromium instalado con `npx playwright install chromium`.
+
+Las pruebas E2E de autenticación simulan la respuesta de la API y bloquean cualquier otra llamada de red: no necesitan cuentas reales, el backend ni Supabase, y no modifican datos. Validan el recorrido de la interfaz; la integración real con PostgreSQL/Supabase se ejecuta por separado desde el backend.
 
 ## Módulo de autenticación
 
