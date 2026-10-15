@@ -32,7 +32,7 @@ async function loadMemberProfileData(): Promise<MemberProfileData> {
   return { membership, payments, medical }
 }
 
-export function ProfileScreen({ role, onPasswordChange }: { role: UserRole; onPasswordChange: () => void }) {
+export function ProfileScreen({ role, onPasswordChange, onLogout }: { role: UserRole; onPasswordChange: () => void; onLogout: () => void }) {
   const { updateProfilePhoto } = useAuth()
   const loader = useCallback(async (): Promise<ProfilePageData> => {
     const [profile, member] = await Promise.all([
@@ -59,6 +59,7 @@ export function ProfileScreen({ role, onPasswordChange }: { role: UserRole; onPa
             updateProfilePhoto(profile.photoUrl)
           }}
         />}
+    {role !== 'ADMIN' && <button type="button" className="button button-secondary profile-mobile-logout" onClick={onLogout}><Icon name="logout" size={20}/>Cerrar sesión</button>}
   </div>
 }
 
