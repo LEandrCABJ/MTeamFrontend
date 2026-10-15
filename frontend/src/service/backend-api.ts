@@ -58,6 +58,11 @@ export interface Notification {
   readAt: string | null
 }
 
+export interface NotificationPage extends Page<Notification> {
+  /** Every unread notification of the account, whatever the page or filter. Older backends omit it. */
+  unreadCount?: number
+}
+
 export interface MedicalCertificateMember {
   id: string
   firstName: string
@@ -454,7 +459,7 @@ export const backendApi = {
   updateNewsPostStatus: (id: string, status: 'PUBLISHED' | 'INACTIVE') =>
     apiRequest<NewsPost>(`/news-posts/${id}/status`, { method: 'PATCH', body: { status } }),
   listNotifications: (filters: { page?: number; limit?: number; isRead?: boolean } = {}) =>
-    apiRequest<Page<Notification>>(`/notifications${queryString(filters)}`),
+    apiRequest<NotificationPage>(`/notifications${queryString(filters)}`),
   getNotification: (id: string) => apiRequest<Notification>(`/notifications/${id}`),
   markNotificationAsRead: (id: string) =>
     apiRequest<void>(`/notifications/${id}/read-status`, { method: 'PATCH' }),

@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom'
 import type { AuthUser } from '../authentication/auth-types'
+import { useNotifications } from '../communications/use-notifications'
 import { Icon } from './Icon'
+import { UnreadBadge } from './UnreadBadge'
 import { UserAvatar } from './UserAvatar'
 import { NAVIGATION, ROLE_BASE, ROLE_LABEL, hrefFor, type NavEntry } from './navigation'
 
 export function WorkspaceSidebar({ user, active, onLogout }: { user: AuthUser; active: NavEntry; onLogout: () => void }) {
   const role = user.role
+  const { unreadCount } = useNotifications()
   return <aside className="app-sidebar">
     <Link to={ROLE_BASE[role]} className="app-sidebar-brand" aria-label="M-TEAM Gimnasio, inicio">
       <span className="app-brand-mark" aria-hidden="true">M</span>
@@ -17,6 +20,7 @@ export function WorkspaceSidebar({ user, active, onLogout }: { user: AuthUser; a
         return <Link key={entry.href} to={hrefFor(role, entry.href)} className={selected ? 'app-nav-item is-active' : 'app-nav-item'} aria-current={selected ? 'page' : undefined}>
           <Icon name={entry.icon} size={22}/>
           <span>{entry.label}</span>
+          {entry.href === 'notificaciones' && <UnreadBadge count={unreadCount}/>}
         </Link>
       })}
     </nav>

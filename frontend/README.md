@@ -22,7 +22,9 @@ URLs de PostgreSQL, claves privadas de Supabase ni credenciales de Storage.
 - `npm.cmd test`: ejecuta las pruebas automatizadas.
 - `npm.cmd run test:e2e`: ejecuta los flujos de navegador con Playwright. En Windows usa Microsoft Edge; en otros sistemas necesita Chromium instalado con `npx playwright install chromium`.
 
-Las pruebas E2E de autenticación, acreditación de pagos, consulta de eventos y lectura de notificaciones simulan las respuestas de la API y bloquean cualquier otra llamada de red. La prueba de acceso QR también simula el permiso de cámara denegado. No necesitan cuentas reales, el backend ni Supabase, y no modifican datos. Validan recorridos de la interfaz; la integración real con PostgreSQL/Supabase se ejecuta por separado desde el backend.
+Las pruebas E2E de autenticación, acreditación de pagos, consulta de eventos y lectura de notificaciones simulan las respuestas de la API y bloquean cualquier otra llamada de red. La prueba de acceso QR también simula el permiso de cámara denegado. No necesitan cuentas reales, el backend ni Supabase, y no modifican datos. Validan recorridos de la interfaz (los de notificaciones usan una API falsa con estado, `e2e/support/fake-notifications-api.ts`, que respeta el contrato real); no demuestran que el backend ni la base de datos funcionen.
+
+La verificación real de las notificaciones (`e2e/real-backend`) se omite si no se definen `E2E_REAL_API_URL` y `E2E_REAL_FIXTURE`; ver [Notificaciones contra el backend real](#notificaciones-contra-el-backend-real).
 
 ## Módulo de autenticación
 
@@ -53,7 +55,54 @@ La integración usa las rutas efectivamente implementadas en el backend para:
 
 Los dashboards consumen las métricas disponibles y mantienen estados de carga,
 error o no disponibilidad cuando falta información agregada. Los módulos de
-eventos, novedades, notificaciones, historial de accesos y período
+eventos, novedades, historial de accesos y período
 inicial del panel administrativo se muestran como pendientes porque sus APIs
 todavía no forman parte del alcance de integración acordado. No se usan datos
 simulados como reemplazo cuando falta un endpoint o el backend no está disponible.
+
+## Notificaciones
+
+Socios y entrenadores consultan sus avisos internos en `/socio/notificaciones` y `/entrenador/notificaciones` (el administrador no tiene bandeja). La pantalla usa:
+
+- `GET /notifications` (paginado de a 20, más reciente primero), `PATCH /notifications/:id/read-status` y `PATCH /notifications/read-status`.
+- El total de no leídas de la cuenta (`unreadCount` de la respuesta) decide si "Marcar todas como leídas" está disponible, aunque las no leídas estén en otras páginas. Si el backend no envía `unreadCount`, se consulta el total con `isRead=false`.
+- Un contador junto a "Notificaciones" en el menú lateral y, en celular, una campana con el mismo contador en la barra superior: la barra inferior solo tiene cinco pestañas, por lo que la campana es el acceso desde el teléfono.
+- Actualización con la aplicación abierta: el contador y la lista se consultan cada minuto mientras la pestaña está visible y al volver a ella, sin reemplazar la lista por un estado de carga. No hay WebSockets.
+- Aislamiento por cuenta: el contador vive en un proveedor con `key` por usuario, no se guarda en el navegador y desaparece al cerrar sesión o cambiar de cuenta.
+- Las fechas se muestran en horario de Argentina (`America/Argentina/Buenos_Aires`).
+
+### Notificaciones contra el backend real
+
+`e2e/real-backend/notifications.real.spec.ts` ejecuta el navegador contra el backend real y una base PostgreSQL local **descartable** (nada simulado): el administrador dispara por API los eventos reales (aumento de cuota, revisión de apto, cancelación de eventos, cambios de clases) y cada usuario lee sus avisos en la interfaz, los marca como leídos y comprueba que persisten.
+
+1. Base local de pruebas (el nombre debe contener `test`; nunca apuntar a Supabase ni a una base compartida):
+
+   ```powershell
+   docker run -d --name mteam-test-pg -e POSTGRES_USER=mteam -e POSTGRES_PASSWORD=mteam_test_password -e POSTGRES_DB=mteam_test -p 127.0.0.1:54329:5432 postgres:17-alpine
+   ```
+
+2. Backend (repositorio `MTeamBackend`, carpeta `backend/`, rama `develop` con las notificaciones integradas):
+
+   ```powershell
+   $env:DATABASE_URL = "postgresql://mteam:mteam_test_password@localhost:54329/mteam_test"
+   $env:DIRECT_URL = $env:DATABASE_URL
+   $env:NOTIFICATION_TEST_DATABASE_URL = $env:DATABASE_URL
+   $env:JWT_SECRET = "solo-para-pruebas-locales"
+   $env:CORS_ORIGIN = "http://127.0.0.1:4173"
+   $env:PORT = "3100"; $env:NODE_ENV = "test"; $env:APP_ENV = "test"
+   npm.cmd ci
+   npm.cmd run prisma:migrate:deploy
+   npm.cmd run seed:e2e:notifications -- --out "$env:TEMP\mteam-e2e-fixture.json"
+   npm.cmd run build
+   node dist/index.js
+   ```
+
+3. Frontend (otra terminal, en `frontend/`):
+
+   ```powershell
+   $env:E2E_REAL_API_URL = "http://127.0.0.1:3100/api"
+   $env:E2E_REAL_FIXTURE = "$env:TEMP\mteam-e2e-fixture.json"
+   npm.cmd run test:e2e -- e2e/real-backend
+   ```
+
+El script de siembra rechaza cualquier base que no sea `localhost` con `test` en el nombre y solo elimina las filas que él mismo creó (cuentas `@e2e.m-team.test`). Vuelva a ejecutarlo antes de repetir la prueba.
