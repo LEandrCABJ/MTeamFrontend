@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type PropsWithChildren } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { AUTH_UNAUTHORIZED_EVENT } from '../../service/api-client'
 import { authService } from './auth-service'
 import { authStorage } from './auth-storage'
@@ -7,6 +7,18 @@ import type { ChangePasswordInput, LoginCredentials } from './auth-types'
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState(authStorage.read)
+  const photoRevisionRef = useRef(0)
+  const accessToken = session?.accessToken
+  const isPasswordChangeRequired = session?.user.isPasswordChangeRequired
+
+  const updateProfilePhoto = useCallback((photoUrl: string | null) => {
+    const currentSession = authStorage.read()
+    if (!currentSession || currentSession.accessToken !== accessToken) return
+    photoRevisionRef.current += 1
+    const nextSession = { ...currentSession, user: { ...currentSession.user, photoUrl } }
+    authStorage.update(nextSession)
+    setSession(nextSession)
+  }, [accessToken])
 
   useEffect(() => {
     const clearSession = () => setSession(null)
@@ -16,12 +28,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const storedSession = authStorage.read()
-    if (!storedSession || storedSession.user.isPasswordChangeRequired) return
+    if (!storedSession || isPasswordChangeRequired) return
     let active = true
+    const photoRevision = photoRevisionRef.current
     void authService.currentIdentity().then((identity) => {
-      if (!active) return
+      const currentSession = authStorage.read()
+      if (!active || !currentSession || currentSession.accessToken !== accessToken) return
       const nextSession = {
-        ...storedSession,
+        ...currentSession,
         user: {
           id: identity.id,
           firstName: identity.firstName,
@@ -30,16 +44,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
           role: identity.role,
           status: identity.status,
           isPasswordChangeRequired: identity.isPasswordChangeRequired,
+          photoUrl: photoRevisionRef.current === photoRevision ? identity.photoUrl : currentSession.user.photoUrl,
         },
       }
       authStorage.update(nextSession)
       setSession(nextSession)
     }).catch(() => undefined)
     return () => { active = false }
-  }, [])
+  }, [accessToken, isPasswordChangeRequired])
 
   const value = useMemo(() => ({
     session,
+    updateProfilePhoto,
     async login(credentials: LoginCredentials, remember: boolean) {
       const response = await authService.login(credentials)
       const nextSession = authStorage.write(response, remember)
@@ -49,6 +65,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async logout() {
       try {
         if (session) await authService.logout()
+      } catch {
+        // Local logout must finish even when the server cannot be reached.
       } finally {
         authStorage.clear()
         setSession(null)
@@ -64,7 +82,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       authStorage.update(nextSession)
       setSession(nextSession)
     },
-  }), [session])
+  }), [session, updateProfilePhoto])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

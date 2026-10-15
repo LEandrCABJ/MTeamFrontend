@@ -24,6 +24,7 @@ export function renderWithSession(ui: ReactElement, { user, route = '/' }: { use
     session,
     login: vi.fn(),
     logout: vi.fn(() => Promise.resolve()),
+    updateProfilePhoto: vi.fn(),
     changePassword: vi.fn(),
   }}>
     <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>

@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { renderWithSession, testUser } from '../../test/test-utils'
 import { ProfileScreen } from './ProfileScreen'
 
 const profile = {
@@ -31,7 +31,7 @@ describe('perfil conectado', () => {
       if (pathname.endsWith('/members/me/payments')) return Promise.resolve(new Response(JSON.stringify({ items: [], page: 1, limit: 20, total: 0 }), { status: 200 }))
       return Promise.resolve(new Response(JSON.stringify({ items: [{ id: 'medical-1', memberId: profile.id, status: 'APPROVED', uploadedAt: '2026-09-01T12:00:00Z', reviewedAt: '2026-09-02T12:00:00Z', reviewComment: null, member: { id: profile.id, firstName: profile.firstName, lastName: profile.lastName, documentNumber: profile.documentNumber, email: profile.email }, reviewedBy: null }], page: 1, limit: 20, total: 1, initialMedicalCertificatePeriod: { startsAt: null, expiresAt: null, daysRemaining: 0, isActive: false } }), { status: 200 }))
     }))
-    render(<MemoryRouter><ProfileScreen role="MEMBER" onPasswordChange={() => undefined}/></MemoryRouter>)
+    renderWithSession(<ProfileScreen role="MEMBER" onPasswordChange={() => undefined}/>, { user: testUser('MEMBER') })
     const email = await screen.findByDisplayValue('ana@example.com')
     fireEvent.change(email, { target: { value: 'nueva@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
