@@ -28,6 +28,16 @@ describe('shell autenticado', () => {
     vi.unstubAllGlobals()
   })
 
+  it.each([['/socio/acceso', 'MEMBER'], ['/entrenador/acceso', 'TRAINER']] as const)('mantiene el acceso y la navegación activa en %s', (route, role) => {
+    renderWorkspace(route, role)
+    const sidebar = screen.getByRole('navigation', { name: 'Navegación principal' })
+    const tabbar = screen.getByRole('navigation', { name: 'Navegación inferior' })
+    expect(within(sidebar).getByRole('link', { name: 'Acceso QR' })).toHaveAttribute('aria-current', 'page')
+    expect(within(tabbar).getByRole('link', { name: 'Acceso' })).toHaveAttribute('aria-current', 'page')
+    expect(within(tabbar).getByRole('link', { name: 'Acceso' })).toHaveAttribute('href', route)
+    expect(screen.getByRole('button', { name: 'Escanear QR' })).toBeInTheDocument()
+  })
+
   it('usa la navegación lateral del Figma para cada rol', () => {
     renderWorkspace('/socio/eventos', 'MEMBER')
     expect(sidebarLabels()).toEqual(['Inicio', 'Mi perfil', 'Apto médico', 'Acceso QR', 'Clases', 'Eventos', 'Novedades', 'Notificaciones'])
@@ -82,10 +92,10 @@ describe('shell autenticado', () => {
     setMobileViewport(true)
     renderWorkspace('/socio/eventos', 'MEMBER')
     const tabs = () => within(screen.getByRole('navigation', { name: 'Navegación inferior' })).getAllByRole('link').map((link) => link.textContent)
-    expect(tabs()).toEqual(['Inicio', 'Mi perfil', 'Apto', 'Acceso QR', 'Clases'])
+    expect(tabs()).toEqual(['Inicio', 'Mi perfil', 'Apto', 'Acceso', 'Clases'])
     cleanup()
     renderWorkspace('/entrenador/eventos', 'TRAINER')
-    expect(tabs()).toEqual(['Inicio', 'Mi perfil', 'Mis clases', 'Acceso QR', 'Eventos'])
+    expect(tabs()).toEqual(['Inicio', 'Mi perfil', 'Mis clases', 'Acceso', 'Eventos'])
   })
 
   it('mantiene accesibles pagos y entrenadores del socio dentro de Inicio', () => {

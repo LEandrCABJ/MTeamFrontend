@@ -44,11 +44,13 @@ La integración usa las rutas efectivamente implementadas en el backend para:
 - sedes públicas y administración de sedes;
 - directorio público de entrenadores;
 - cronograma semanal, copia de semanas y administración de clases;
-- carga, consulta, revisión y acceso temporal a certificados médicos.
+- carga, consulta, revisión y acceso temporal a certificados médicos;
+- escaneo real de cámara para socios y entrenadores y envío del token QR fijo a
+  `POST /access-attempts`, con visualización del resultado devuelto por la API.
 
 Los dashboards consumen las métricas disponibles y mantienen estados de carga,
 error o no disponibilidad cuando falta información agregada. Los módulos de
-acceso QR, eventos, novedades, notificaciones, historial de accesos y período
+eventos, novedades, notificaciones, historial de accesos y período
 inicial del panel administrativo se muestran como pendientes porque sus APIs
 todavía no forman parte del alcance de integración acordado. No se usan datos
 simulados como reemplazo cuando falta un endpoint o el backend no está disponible.
