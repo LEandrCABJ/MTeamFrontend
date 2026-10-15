@@ -18,9 +18,24 @@ export function useApiResource<T>(loader: () => Promise<T>) {
       if (currentRequest === requestId.current) setLoading(false)
     }
   }, [loader])
+  // Background update: keeps what is on screen (no loading state, no error) and shares the request
+  // counter with `load`, so an older answer can never replace a newer one.
+  const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current
+    try {
+      const value = await loader()
+      if (currentRequest === requestId.current) {
+        setData(value)
+        setError('')
+        setLoading(false)
+      }
+    } catch {
+      // The next explicit load reports the problem; meanwhile the last known data stays visible.
+    }
+  }, [loader])
   useEffect(() => {
     const task = window.setTimeout(() => { void load() }, 0)
     return () => window.clearTimeout(task)
   }, [load])
-  return { data, loading, error, reload: load, setData }
+  return { data, loading, error, reload: load, refresh, setData }
 }

@@ -18,6 +18,7 @@ import { AdminMedicalReviewScreen } from './AdminMedicalReviewScreen'
 import { MemberMedicalCertificateScreen } from './MemberMedicalCertificateScreen'
 import { EventsScreen } from '../communications/EventsScreen'
 import { NewsScreen } from '../communications/NewsScreen'
+import { NotificationsProvider } from '../communications/NotificationsProvider'
 import { NotificationsScreen } from '../communications/NotificationsScreen'
 import { ProfileScreen } from './ProfileScreen'
 import { TrainerDirectoryScreen } from './TrainerDirectoryScreen'
@@ -58,18 +59,21 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
     navigate('/iniciar-sesion', { replace: true })
   }
 
-  return <WorkspaceLayout
-    user={session.user}
-    active={active}
-    title={screenTitle}
-    mobileBackHref={isAdminUserDetail ? `/admin/usuarios${location.search}` : role === 'ADMIN' && segment === 'aptos' && nestedId ? '/admin/aptos' : role === 'ADMIN' && segment === 'sedes' ? '/admin' : undefined}
-    mobileTitle={isAdminUserDetail ? 'Detalle de usuario' : role === 'ADMIN' && segment === 'aptos' && nestedId ? 'Revisar apto' : undefined}
-    notice={permissionNotice}
-    onDismissNotice={() => setPermissionNotice('')}
-    onLogout={() => void handleLogout()}
-  >
-    {renderScreen()}
-  </WorkspaceLayout>
+  // Keyed by account so that a different user never inherits the previous unread counter.
+  return <NotificationsProvider key={session.user.id} enabled={role !== 'ADMIN'}>
+    <WorkspaceLayout
+      user={session.user}
+      active={active}
+      title={screenTitle}
+      mobileBackHref={isAdminUserDetail ? `/admin/usuarios${location.search}` : role === 'ADMIN' && segment === 'aptos' && nestedId ? '/admin/aptos' : role === 'ADMIN' && segment === 'sedes' ? '/admin' : undefined}
+      mobileTitle={isAdminUserDetail ? 'Detalle de usuario' : role === 'ADMIN' && segment === 'aptos' && nestedId ? 'Revisar apto' : undefined}
+      notice={permissionNotice}
+      onDismissNotice={() => setPermissionNotice('')}
+      onLogout={() => void handleLogout()}
+    >
+      {renderScreen()}
+    </WorkspaceLayout>
+  </NotificationsProvider>
 
   function renderScreen() {
     if (!segment) {
