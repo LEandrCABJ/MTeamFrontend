@@ -64,6 +64,37 @@ test.describe('[API simulada] bandeja de notificaciones (escritorio)', () => {
     await expect(menuEntry(page)).toContainText('1 notificación sin leer')
   })
 
+  test('abrir un aviso lo marca como leído y muestra su detalle; el control explícito sigue disponible y el teclado alcanza', async ({ page }) => {
+    const api = memberWithTwoNotifications()
+    await api.install(page)
+    await login(page, sofia)
+    await menuEntry(page).click()
+
+    const unread = articleTitled(page, 'Apto aprobado')
+    const other = articleTitled(page, 'Aumento de cuota')
+    await expect(unread.getByRole('button', { name: 'Marcar como leída' })).toBeVisible()
+    await unread.getByRole('button', { name: 'Ver detalle' }).click()
+    await expect(unread.getByRole('button', { name: 'Ocultar detalle' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(unread).toContainText('Leída')
+    await expect(unread.locator('dl')).toContainText(/Leída el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)
+    await expect(unread.getByRole('button', { name: 'Marcar como leída' })).toHaveCount(0)
+    await expect(menuEntry(page)).toContainText('1 notificación sin leer')
+    expect(api.unreadOf(sofia.id)).toBe(1)
+
+    // Keyboard: the control is reachable and Enter opens (and reads) the other one; only one detail stays open.
+    await other.getByRole('button', { name: 'Ver detalle' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(other).toContainText('Leída')
+    await expect(other.getByRole('button', { name: 'Ocultar detalle' })).toBeFocused()
+    await expect(unread.locator('dl')).toHaveCount(0)
+    expect(api.unreadOf(sofia.id)).toBe(0)
+    await expect(page.locator('.app-nav-badge')).toHaveCount(0)
+
+    await page.reload()
+    await expect(articleTitled(page, 'Apto aprobado')).toContainText('Leída')
+    await expect(articleTitled(page, 'Aumento de cuota')).toContainText('Leída')
+  })
+
   test('marca todas como leídas, deshabilita el botón, quita el contador y conserva el historial', async ({ page }) => {
     const api = memberWithTwoNotifications()
     await api.install(page)
@@ -226,5 +257,28 @@ test.describe('[API simulada] bandeja de notificaciones (celular)', () => {
     await page.getByRole('button', { name: 'Marcar todas como leídas' }).tap()
     await expect(page.locator('article.is-unread')).toHaveCount(0)
     await expect(page.locator('.app-topbar .app-nav-badge')).toHaveCount(0)
+  })
+
+  test('al marcar un aviso como leído la lista no se reconstruye: conserva la posición y el foco', async ({ page }) => {
+    const api = new FakeNotificationsApi([sofia, tomas])
+    for (let index = 1; index <= 20; index += 1) api.add(sofia.id, `Aviso ${String(index).padStart(2, '0')}`)
+    await api.install(page)
+    await login(page, sofia)
+    await phoneBell(page).click()
+    await expect(page.getByRole('article')).toHaveCount(20)
+
+    const target = articleTitled(page, 'Aviso 01') // the oldest one is the last card: the page is scrolled down to reach it
+    await target.scrollIntoViewIfNeeded()
+    const node = await target.elementHandle()
+    const topBefore = await target.evaluate((element) => element.getBoundingClientRect().top)
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500)
+
+    await target.getByRole('button', { name: 'Marcar como leída' }).tap()
+    await expect(target).toContainText('Leída')
+    expect(await node!.evaluate((element) => element.isConnected)).toBe(true)
+    expect(Math.abs((await target.evaluate((element) => element.getBoundingClientRect().top)) - topBefore)).toBeLessThan(80)
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500)
+    await expect(target.getByRole('button', { name: 'Ver detalle' })).toBeFocused()
+    await expect(phoneBell(page)).toContainText('19 notificaciones sin leer')
   })
 })

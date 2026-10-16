@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
-import { openDatabaseProbe, type DatabaseProbe } from '../support/postgres-probe'
+import { openDatabaseProbe, openDatabaseWriter, type DatabaseProbe } from '../support/postgres-probe'
 
 /**
  * [BACKEND Y POSTGRESQL REALES] Nothing in this file is mocked: the browser talks to the real Express API,
@@ -49,6 +49,13 @@ function gymDateTime(instant: Date) {
   return `${date} a las ${time}`
 }
 
+/** "03/03/2092 23:30": how the screens write a date and time, built with another locale and API as an independent oracle. */
+function uiDateTime(instant: Date) {
+  const [date, time] = instant.toLocaleString('sv-SE', { timeZone: GYM_TIME_ZONE, hour12: false }).split(' ')
+  const [year, month, day] = date!.split('-')
+  return `${day}/${month}/${year} ${time!.slice(0, 5)}`
+}
+
 const menuEntry = (page: Page) => page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('link', { name: /Notificaciones/ })
 const phoneBell = (page: Page) => page.locator('.app-topbar').getByRole('link', { name: /Notificaciones/ })
 const inbox = (page: Page) => page.locator('.notification-list')
@@ -76,6 +83,7 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
   let fixture: Fixture
   let api: APIRequestContext
   let db: DatabaseProbe
+  let writer: DatabaseProbe
   let eventTitle: string
   const tokens: Record<Account, string> = { admin: '', member: '', otherMember: '', trainer: '' }
 
@@ -134,6 +142,7 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
     }
     api = await playwrightRequest.newContext()
     db = await openDatabaseProbe({ backendDir: fixture.backendDir, databaseUrl: fixture.databaseUrl })
+    writer = await openDatabaseWriter({ backendDir: fixture.backendDir, databaseUrl: fixture.databaseUrl })
     for (const account of ['admin', 'member', 'otherMember', 'trainer'] as const) tokens[account] = await login(fixture[account].email)
 
     // The administrator drives real business events through the real API.
@@ -151,6 +160,7 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
 
   test.afterAll(async () => {
     await db?.close()
+    await writer?.close()
     await api?.dispose()
   })
 
@@ -449,19 +459,26 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
         await route.continue()
       })
       await page.getByRole('button', { name: 'Siguiente' }).tap()
-      await expect(page.getByText('No se pudo conectar con el servidor. Verificá que el backend esté iniciado.')).toBeVisible()
+      await expect(page.getByText('No se pudo conectar con el servidor. Revisá tu conexión a internet e intentá nuevamente.')).toBeVisible()
       await page.getByRole('button', { name: 'Reintentar' }).tap()
       await expect(page.getByText(/Página 2 de 2/)).toBeVisible()
       await page.getByRole('button', { name: 'Anterior' }).tap()
       await expect(page.getByRole('article')).toHaveCount(20)
 
-      // Reading from the phone is stored.
-      const target = page.locator('article.is-unread').first()
-      const targetTitle = await target.getByRole('heading').textContent()
+      // Reading from the phone is stored, and the reader keeps their place: the list is not rebuilt, the
+      // notification stays where it was on the screen and the keyboard focus stays on it.
+      const unreadFlags = await page.getByRole('article').evaluateAll((items) => items.map((item) => item.classList.contains('is-unread')))
+      const target = page.getByRole('article').nth(unreadFlags.lastIndexOf(true))
+      await target.scrollIntoViewIfNeeded()
+      const targetNode = await target.elementHandle()
+      const topBefore = await target.evaluate((node) => node.getBoundingClientRect().top)
       await target.getByRole('button', { name: 'Marcar como leída' }).tap()
       await expect(phoneBell(page)).toContainText(unreadLabel(unread - 1))
       expect(await unreadInDatabase(userId('otherMember'))).toBe(unread - 1)
-      expect(targetTitle).toBeTruthy()
+      await expect(target).toContainText('Leída')
+      expect(await targetNode!.evaluate((node) => node.isConnected)).toBe(true)
+      expect(Math.abs((await target.evaluate((node) => node.getBoundingClientRect().top)) - topBefore)).toBeLessThan(80)
+      await expect(target.getByRole('button', { name: 'Ver detalle' })).toBeFocused()
 
       await page.getByRole('button', { name: 'Marcar todas como leídas' }).tap()
       await expect(page.locator('.app-topbar .app-nav-badge')).toHaveCount(0)
@@ -540,5 +557,222 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
       await memberContext?.close()
       await admin.context.close()
     }
+  })
+
+  test('abrir un aviso lo marca como leído, muestra cuándo y persiste en PostgreSQL, con el mouse y con el teclado', async ({ page }) => {
+    // Two fresh unread notices for the member: two real increases announced by the administrator.
+    await createdByAdmin('/membership-prices', { amount: 99000.25, effectiveFrom: '2097-01-01T03:00:00.000Z' })
+    await createdByAdmin('/membership-prices', { amount: 99001.5, effectiveFrom: '2097-02-01T03:00:00.000Z' })
+    const unreadBefore = await unreadInDatabase(userId('member'))
+    expect(unreadBefore).toBeGreaterThanOrEqual(2)
+    const readAtOf = async (amount: string) => {
+      const [row] = await db.rows<{ read_at: Date | null }>('SELECT read_at FROM notification WHERE user_id = $1 AND message LIKE $2', [userId('member'), `%${amount} desde%`])
+      return row!.read_at
+    }
+
+    await loginThroughTheUi(page, fixture.member.email, fixture.password)
+    await menuEntry(page).click()
+    const first = articleTitled(page, 'Aumento de cuota').filter({ hasText: '$ 99.001,50' })
+    const second = articleTitled(page, 'Aumento de cuota').filter({ hasText: '$ 99.000,25' })
+    await expect(first).toContainText('No leída')
+    expect(await readAtOf('99.001,50')).toBeNull()
+
+    // With the mouse: opening reads it and shows when.
+    await first.getByRole('button', { name: 'Ver detalle' }).click()
+    await expect(first.getByRole('button', { name: 'Ocultar detalle' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(first).toContainText('Leída')
+    await expect(first.getByRole('button', { name: 'Marcar como leída' })).toHaveCount(0)
+    const firstReadAt = await readAtOf('99.001,50')
+    expect(firstReadAt).toBeInstanceOf(Date)
+    await expect(first.locator('dl')).toContainText(`Leída el ${uiDateTime(firstReadAt!)}`)
+    await expect(menuEntry(page)).toContainText(unreadLabel(unreadBefore - 1))
+
+    // With the keyboard: the focus reaches the control and Enter does the same. Only one detail stays open.
+    await second.getByRole('button', { name: 'Ver detalle' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(second).toContainText('Leída')
+    await expect(second.getByRole('button', { name: 'Ocultar detalle' })).toBeFocused()
+    await expect(first.locator('dl')).toHaveCount(0)
+    expect(await unreadInDatabase(userId('member'))).toBe(unreadBefore - 2)
+
+    // Opening something already read changes nothing in the database; closing hides the detail.
+    await first.getByRole('button', { name: 'Ver detalle' }).click()
+    await expect(first.locator('dl')).toContainText(`Leída el ${uiDateTime(firstReadAt!)}`)
+    await first.getByRole('button', { name: 'Ocultar detalle' }).click()
+    await expect(first.locator('dl')).toHaveCount(0)
+    expect(await readAtOf('99.001,50')).toEqual(firstReadAt)
+
+    await page.reload()
+    await expect(articleTitled(page, 'Aumento de cuota').filter({ hasText: '$ 99.001,50' })).toContainText('Leída')
+    await expect(articleTitled(page, 'Aumento de cuota').filter({ hasText: '$ 99.000,25' })).toContainText('Leída')
+  })
+
+  test('un socio que ya usa la plataforma recibe el aviso al entrar en los 5 días y otro al vencer, sin recargar ni abrir la bandeja', async ({ browser }) => {
+    test.setTimeout(180_000)
+    const id = userId('otherMember')
+    const before = { expiring: await countInDatabase(id, 'MEMBERSHIP_EXPIRING'), expired: await countInDatabase(id, 'MEMBERSHIP_EXPIRED') }
+
+    // A payment accredited 30 days less 25 seconds ago: the fee ends 25 seconds from now, well inside the five-day window.
+    const [payment] = await writer.rows<{ expires_at: Date }>(
+      `INSERT INTO payment (id, member_id, amount, method, status, created_by_id, confirmed_by_id, accredited_at, expires_at)
+       VALUES (gen_random_uuid(), $1, 20000.00, 'CASH', 'ACCREDITED', $2, $2,
+               now() - interval '30 days' + interval '25 seconds', now() + interval '25 seconds')
+       RETURNING expires_at`,
+      [id, fixture.admin.id],
+    )
+    const expiresAt = payment!.expires_at
+
+    const context = await browser.newContext({ baseURL: APP_URL })
+    const page = await context.newPage()
+    await page.clock.install() // the timers of this page are driven by the test; the server clock is the real one
+    try {
+      await loginThroughTheUi(page, fixture.otherMember.email, fixture.password)
+      await expect(page).toHaveURL(/\/socio$/)
+
+      // Entering the window: the workspace asks the API when it opens, and the notice exists and is counted.
+      await expect.poll(() => countInDatabase(id, 'MEMBERSHIP_EXPIRING')).toBe(before.expiring + 1)
+      const unreadWithWarning = await unreadInDatabase(id)
+      await expect(menuEntry(page)).toContainText(unreadLabel(unreadWithWarning))
+
+      // The fee ends while the member keeps using the app on the same screen.
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, expiresAt.getTime() - Date.now()) + 1_500))
+      await page.clock.fastForward(61_000)
+      await expect.poll(() => countInDatabase(id, 'MEMBERSHIP_EXPIRED')).toBe(before.expired + 1)
+      await expect(menuEntry(page)).toContainText(unreadLabel(unreadWithWarning + 1))
+      await expect(page).toHaveURL(/\/socio$/)
+
+      const rows = await db.rows<{ type: string; dedupe_key: string; message: string }>(
+        `SELECT type::text AS type, dedupe_key, message FROM notification
+          WHERE user_id = $1 AND dedupe_key IN ($2, $3)`,
+        [id, `membership-expiring:${id}:${expiresAt.toISOString()}`, `membership-expired:${id}:${expiresAt.toISOString()}`],
+      )
+      expect(rows.map((row) => row.type).sort()).toEqual(['MEMBERSHIP_EXPIRED', 'MEMBERSHIP_EXPIRING'])
+      expect(rows.find((row) => row.type === 'MEMBERSHIP_EXPIRING')?.message).toBe(`Tu cuota vence el ${gymDateTime(expiresAt)}.`)
+      expect(rows.find((row) => row.type === 'MEMBERSHIP_EXPIRED')?.message).toContain(`Tu cuota venció el ${gymDateTime(expiresAt)}.`)
+
+      await menuEntry(page).click()
+      await expect(articleTitled(page, 'Cuota vencida').first()).toContainText(`Tu cuota venció el ${gymDateTime(expiresAt)}.`)
+    } finally {
+      await context.close()
+    }
+
+    // Another device, another session: it reads the same notices and creates none.
+    const otherDevice = await openSessionOf(browser, 'otherMember')
+    try {
+      await menuEntry(otherDevice.page).click()
+      await expect(articleTitled(otherDevice.page, 'Cuota vencida')).toHaveCount(before.expired + 1)
+      await expect(articleTitled(otherDevice.page, 'Cuota próxima a vencer')).toHaveCount(before.expiring + 1)
+    } finally {
+      await otherDevice.context.close()
+    }
+    expect(await countInDatabase(id, 'MEMBERSHIP_EXPIRING')).toBe(before.expiring + 1)
+    expect(await countInDatabase(id, 'MEMBERSHIP_EXPIRED')).toBe(before.expired + 1)
+  })
+
+  test('un pago nuevo renueva la vigencia sin avisos nuevos y anularlo no repite lo que ya se avisó', async ({ page }) => {
+    const id = userId('otherMember')
+    const feeNotices = async () => (await countInDatabase(id, 'MEMBERSHIP_EXPIRING')) + (await countInDatabase(id, 'MEMBERSHIP_EXPIRED'))
+    const before = await feeNotices()
+    const membershipStatus = async () => (await (await send('GET', '/members/me/membership', tokens.otherMember)).json()).status as string
+    expect(await membershipStatus()).toBe('EXPIRED')
+
+    const accredited = await api.fetch(`${apiUrl}/payments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokens.admin}`, 'Idempotency-Key': randomUUID() },
+      data: { memberId: id, amount: 25000, method: 'CASH' },
+    })
+    expect(accredited.status()).toBe(201)
+    const payment = await accredited.json()
+    expect(new Date(payment.expiresAt).getTime() - new Date(payment.accreditedAt).getTime()).toBe(30 * 86_400_000)
+    expect(await membershipStatus()).toBe('CURRENT')
+
+    // The member opens the app on a current fee: nothing new, and what was announced stays in the history.
+    await loginThroughTheUi(page, fixture.otherMember.email, fixture.password)
+    await menuEntry(page).click()
+    await expect(page.getByRole('article').first()).toBeVisible()
+    await expect(articleTitled(page, 'Cuota vencida').first()).toBeVisible()
+    expect(await feeNotices()).toBe(before)
+
+    // Voiding it brings back a state that was already announced: it is not announced again.
+    const voided = await send('POST', `/payments/${payment.id}/voids`, tokens.admin, { reason: 'Prueba E2E: pago cargado por error' })
+    expect(voided.status()).toBe(200)
+    expect(await membershipStatus()).toBe('EXPIRED')
+    await page.reload()
+    await expect(articleTitled(page, 'Cuota vencida').first()).toBeVisible()
+    expect(await feeNotices()).toBe(before)
+  })
+
+  test('el administrador aprueba un apto nuevo desde su pantalla y solo el socio dueño recibe el aviso, sin perder el historial', async ({ browser, page }) => {
+    const [certificate] = await writer.rows<{ id: string }>(
+      `INSERT INTO medical_certificate (id, member_id, file_url, status)
+       VALUES (gen_random_uuid(), $1, $2, 'PENDING') RETURNING id`,
+      [fixture.member.id, `${fixture.member.id}/e2e-approval.pdf`],
+    )
+    const before = {
+      member: await countInDatabase(userId('member'), 'MEDICAL_CERTIFICATE_REVIEWED'),
+      otherMember: await countInDatabase(userId('otherMember'), 'MEDICAL_CERTIFICATE_REVIEWED'),
+      trainer: await countInDatabase(userId('trainer'), 'MEDICAL_CERTIFICATE_REVIEWED'),
+    }
+
+    const admin = await openSessionOf(browser, 'admin')
+    try {
+      admin.page.on('dialog', (dialog) => void dialog.accept())
+      await admin.page.goto(`/admin/aptos/${certificate!.id}`)
+      await admin.page.getByRole('button', { name: 'Aprobar apto médico' }).click()
+      await expect.poll(() => countInDatabase(userId('member'), 'MEDICAL_CERTIFICATE_REVIEWED')).toBe(before.member + 1)
+    } finally {
+      await admin.context.close()
+    }
+
+    await loginThroughTheUi(page, fixture.member.email, fixture.password)
+    await menuEntry(page).click()
+    const approved = articleTitled(page, 'Apto médico aprobado')
+    await expect(approved).toContainText('Tu apto médico fue aprobado por un administrador.')
+    await expect(approved).toContainText('No leída')
+    await expect(articleTitled(page, 'Apto médico rechazado')).toBeVisible() // the earlier rejection stays in the history
+
+    const [persisted] = await db.rows<{ status: string; reviewed_by_id: string; review_comment: string | null; reviewed_at: Date }>(
+      'SELECT status, reviewed_by_id, review_comment, reviewed_at FROM medical_certificate WHERE id = $1',
+      [certificate!.id],
+    )
+    expect(persisted).toMatchObject({ status: 'APPROVED', reviewed_by_id: fixture.admin.id, review_comment: null })
+    expect(persisted?.reviewed_at).toBeInstanceOf(Date)
+    expect(await countInDatabase(userId('otherMember'), 'MEDICAL_CERTIFICATE_REVIEWED')).toBe(before.otherMember)
+    expect(await countInDatabase(userId('trainer'), 'MEDICAL_CERTIFICATE_REVIEWED')).toBe(before.trainer)
+    const history = await send('GET', '/members/me/medical-certificates', await login(fixture.member.email))
+    expect(history.status()).toBe(200)
+    expect((await history.json()).items.map((item: { status: string }) => item.status).sort()).toEqual(['APPROVED', 'REJECTED'])
+  })
+
+  test('copiar una semana avisa una vez al entrenador por cada clase aun con tres pedidos simultáneos y no toca la semana de origen', async ({ page }) => {
+    const sourceWeek = mondayOnOrAfter('2092-03-01').toISOString().slice(0, 10)
+    const destinationWeek = new Date(mondayOnOrAfter('2092-03-01').getTime() + 7 * 86_400_000).toISOString().slice(0, 10)
+    const [source] = await db.rows<{ id: string }>('SELECT id FROM weekly_schedule WHERE week_starts_on = $1::date', [sourceWeek])
+    const sourceClasses = await db.rows<{ id: string; starts_at: Date }>('SELECT id, starts_at FROM scheduled_class WHERE schedule_id = $1 ORDER BY id', [source!.id])
+    expect(sourceClasses.length).toBeGreaterThan(0)
+    const before = await countInDatabase(userId('trainer'), 'CLASS_CHANGED')
+
+    const results = await Promise.all([1, 2, 3].map(() => api.fetch(`${apiUrl}/weekly-schedules/${source!.id}/copies`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokens.admin}` },
+      data: { weekStartsOn: destinationWeek },
+    })))
+    expect(results.map((response) => response.status()).sort()).toEqual([201, 409, 409])
+
+    expect(await db.rows('SELECT 1 FROM weekly_schedule WHERE week_starts_on = $1::date', [destinationWeek])).toHaveLength(1)
+    const copied = await db.rows<{ activity: string; trainer_id: string; starts_at: Date }>(
+      `SELECT sc.activity, sc.trainer_id, sc.starts_at FROM scheduled_class sc
+         JOIN weekly_schedule ws ON ws.id = sc.schedule_id WHERE ws.week_starts_on = $1::date ORDER BY sc.starts_at`,
+      [destinationWeek],
+    )
+    expect(copied).toHaveLength(sourceClasses.length)
+    expect(await db.rows<{ id: string }>('SELECT id FROM scheduled_class WHERE schedule_id = $1 ORDER BY id', [source!.id])).toEqual(sourceClasses.map(({ id }) => ({ id })))
+    expect(await countInDatabase(userId('trainer'), 'CLASS_CHANGED')).toBe(before + copied.length)
+
+    await loginThroughTheUi(page, fixture.trainer.email, fixture.password)
+    await menuEntry(page).click()
+    const newest = page.getByRole('article').first()
+    await expect(newest).toContainText('Clase asignada')
+    await expect(newest).toContainText(`Se te asignó la clase de ${copied.at(-1)!.activity} el ${gymDateTime(copied.at(-1)!.starts_at)} en ${fixture.branch.name}.`)
   })
 })

@@ -47,7 +47,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   } catch {
     throw new ApiError(0, {
       code: 'NETWORK_ERROR',
-      message: 'No se pudo conectar con el servidor. Verificá que el backend esté iniciado.',
+      message: 'No se pudo conectar con el servidor. Revisá tu conexión a internet e intentá nuevamente.',
       details: null,
     })
   }

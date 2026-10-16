@@ -201,7 +201,7 @@ describe('what the member reads', () => {
     expect(within(article).getByText('Se te asignó la clase de Yoga.')).toBeInTheDocument()
     const stamp = article.querySelector('time') as HTMLTimeElement
     expect(stamp.dateTime).toBe('2030-09-02T02:30:00.000Z')
-    expect(stamp.textContent).toMatch(/^1\/9\/(20)?30/)
+    expect(stamp.textContent).toBe('01/09/2030 23:30')
   })
 
   it('explains a network failure and recovers when the user retries', async () => {
@@ -213,7 +213,7 @@ describe('what the member reads', () => {
     }))
     renderWithSession(<NotificationsScreen/>, { user: testUser('MEMBER') })
 
-    expect(await screen.findByText('No se pudo conectar con el servidor. Verificá que el backend esté iniciado.')).toBeInTheDocument()
+    expect(await screen.findByText('No se pudo conectar con el servidor. Revisá tu conexión a internet e intentá nuevamente.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByText('De nuevo')).toBeInTheDocument()
   })

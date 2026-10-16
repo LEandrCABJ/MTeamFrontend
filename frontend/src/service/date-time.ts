@@ -16,8 +16,22 @@ export function mondayOfGymWeek(instant = new Date()) {
   return addDays(today, day === 0 ? -6 : 1 - day)
 }
 
+/**
+ * "03/03/2036 23:30": always in Buenos Aires time, with a 24-hour clock and a four-digit year, the same
+ * way the backend writes the dates inside its notification texts, so one card never mixes two styles.
+ */
 export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: GYM_TIME_ZONE, dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: GYM_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`
 }
 
 export function formatDate(value: string | null) {
@@ -27,7 +41,7 @@ export function formatDate(value: string | null) {
 }
 
 export function formatTime(value: string) {
-  return new Intl.DateTimeFormat('es-AR', { timeZone: GYM_TIME_ZONE, hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+  return new Intl.DateTimeFormat('es-AR', { timeZone: GYM_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(value))
 }
 
 export function localDateTimeToGymOffset(value: string) {
