@@ -32,6 +32,7 @@ describe.each(['MEMBER', 'TRAINER'] as const)('profile navigation for %s', (role
       { path: '/members/me/membership', handler: () => ({ body: { currentPrice: null, status: 'EXPIRED', daysRemaining: 0 } }) },
       { path: '/members/me/payments', handler: () => ({ body: { items: [], total: 0, page: 1, limit: 20 } }) },
       { path: '/members/me/medical-certificates', handler: () => ({ body: { items: [], total: 0, page: 1, limit: 20, initialMedicalCertificatePeriod: { startsAt: null, expiresAt: null, daysRemaining: 0, isActive: false } } }) },
+      { path: '/trainers', handler: () => ({ body: { items: [], total: 0, page: 1, limit: 100 } }) },
       { method: 'POST', path: '/auth/logout', handler: () => ({ status: 204 }) },
     ])
     return { user, fetchStub }
