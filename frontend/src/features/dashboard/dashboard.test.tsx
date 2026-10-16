@@ -244,7 +244,7 @@ describe('inicio de socio y entrenador', () => {
     stubApi([{ path: '/trainer/classes', handler: () => ({ body: { ...schedule, classes: schedule.classes.filter((item) => item.trainer.id === 'trainer-id') } }) }])
     renderWithSession(<TrainerDashboardScreen/>, { user: testUser('TRAINER', { id: 'trainer-id' }) })
     const today = await screen.findByText('CLASES DE HOY')
-    expect(today.nextSibling).toHaveTextContent('2')
+    await waitFor(() => expect(today.nextSibling).toHaveTextContent('2'))
     expect(screen.getByText('CLASES DE LA SEMANA').nextSibling).toHaveTextContent('2')
     expect(screen.queryByText('Yoga')).not.toBeInTheDocument()
   })
