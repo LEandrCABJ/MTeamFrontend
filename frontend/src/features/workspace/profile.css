@@ -80,3 +80,29 @@
 
 .profile-mobile-logout{display:none}
 @media(max-width:700px){.profile-mobile-logout{display:flex;width:100%;min-height:48px;justify-content:center;gap:10px;margin-top:8px;color:var(--pink)}}
+
+.trainer-profile-page .profile-layout { grid-template-columns: minmax(0, 1.8fr) minmax(290px, 1fr); }
+.trainer-profile-page .profile-read-field strong { white-space: normal; overflow-wrap: anywhere; padding: 12px 14px; line-height: 1.5; }
+.trainer-professional-section .profile-read-field:nth-child(n+3) { grid-column: 1 / -1; }
+.trainer-professional-section .profile-read-field:last-child strong { min-height: 110px; align-items: flex-start; white-space: pre-wrap; }
+.trainer-profile-page .profile-identity-avatar { background: var(--pink); color: var(--white); }
+.trainer-profile-specialty { margin: -8px 0 0; overflow-wrap: anywhere; }
+.trainer-profile-branches { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.trainer-profile-branches li { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.trainer-profile-branches li > div { flex: 1; min-width: 0; }
+.trainer-profile-branches h3 { font-size: 15px; overflow-wrap: anywhere; }
+.trainer-profile-branches p { margin: 5px 0 0; overflow-wrap: anywhere; }
+.trainer-profile-page .profile-form-actions .button { min-height: 44px; }
+@media (max-width: 700px) {
+  .trainer-profile-page .page-header { display: none; }
+  .trainer-profile-page .profile-section { width: 100%; min-width: 0; }
+  .trainer-profile-page .trainer-professional-section { display: none; }
+  .trainer-profile-page .profile-identity-section { order: 1; }
+  .trainer-profile-page .profile-contact-section { order: 2; }
+  .trainer-profile-page .trainer-branches-section { order: 3; }
+  .trainer-profile-page .profile-security-section { order: 4; }
+  .trainer-edit-contact { order: 5; width: 100%; min-height: 48px; }
+  .trainer-profile-page .profile-read-field { align-items: flex-start; }
+  .trainer-profile-page .profile-read-field strong { padding: 0; min-width: 0; max-width: 65%; }
+  .trainer-profile-page .profile-read-field > span { flex-shrink: 0; }
+}
