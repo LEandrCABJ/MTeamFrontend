@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 import { openDatabaseProbe, type DatabaseProbe } from '../support/postgres-probe'
@@ -83,7 +84,10 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
   }
 
   async function createdByAdmin(path: string, data: unknown) {
-    const response = await send('POST', path, tokens.admin, data)
+    const headers = path === '/membership-prices'
+      ? { Authorization: `Bearer ${tokens.admin}`, 'Idempotency-Key': randomUUID() }
+      : { Authorization: `Bearer ${tokens.admin}` }
+    const response = await api.fetch(`${apiUrl}${path}`, { method: 'POST', headers, data })
     expect(response.status(), `${path}: ${await response.text()}`).toBe(201)
     return response.json()
   }
@@ -280,19 +284,22 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
 
     expect(await countInDatabase(userId('otherMember'), 'MEDICAL_CERTIFICATE_REVIEWED')).toBe(0)
     expect(await countInDatabase(userId('trainer'), 'MEDICAL_CERTIFICATE_REVIEWED')).toBe(0)
-    const [certificate] = await db.rows<{ status: string; review_comment: string }>('SELECT status, review_comment FROM medical_certificate WHERE id = $1', [fixture.certificateId])
-    expect(certificate).toEqual({ status: 'REJECTED', review_comment: 'Falta la firma del profesional.' })
+    const [certificate] = await db.rows<{ status: string; review_comment: string; reviewed_by_id: string; reviewed_at: Date }>(
+      'SELECT status, review_comment, reviewed_by_id, reviewed_at FROM medical_certificate WHERE id = $1',
+      [fixture.certificateId],
+    )
+    expect(certificate).toMatchObject({ status: 'REJECTED', review_comment: 'Falta la firma del profesional.', reviewed_by_id: fixture.admin.id })
+    expect(certificate?.reviewed_at).toBeInstanceOf(Date)
   })
 
   test('caso 5 bis: el administrador cambia el valor de la cuota desde su pantalla y cada socio activo recibe el aviso', async ({ browser, page }) => {
-    const [active] = await db.rows<{ n: number }>('SELECT count(*)::int AS n FROM "user" WHERE role = \'MEMBER\' AND status = \'ACTIVE\'')
     const before = { member: await countInDatabase(userId('member'), 'MEMBERSHIP_PRICE_CHANGED'), other: await countInDatabase(userId('otherMember'), 'MEMBERSHIP_PRICE_CHANGED') }
 
     const admin = await openSessionOf(browser, 'admin')
     try {
       await admin.page.goto('/admin/pagos')
-      // The screen announces how many people will be notified: it must be the real number of active members.
-      await expect(admin.page.getByText(`Se notifica a los ${active!.n} socios activos.`)).toBeVisible()
+      // The UI explains that PostgreSQL determines the recipient set at commit time, avoiding a stale client-side count.
+      await expect(admin.page.getByText(/Solo los aumentos notifican a los socios activos/)).toBeVisible()
       await admin.page.getByLabel('Nuevo valor').fill('13000.75')
       await admin.page.getByLabel('Vigente desde').fill('2094-01-01')
       await admin.page.getByRole('button', { name: 'Guardar nuevo valor' }).click()
@@ -305,6 +312,12 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
     expect(await countInDatabase(userId('member'), 'MEMBERSHIP_PRICE_CHANGED')).toBe(before.member + 1)
     expect(await countInDatabase(userId('otherMember'), 'MEMBERSHIP_PRICE_CHANGED')).toBe(before.other + 1)
     expect(await countInDatabase(userId('trainer'), 'MEMBERSHIP_PRICE_CHANGED')).toBe(0)
+    const [persistedPrice] = await db.rows<{ amount: string; effective_from: Date }>(
+      'SELECT amount::text AS amount, effective_from FROM membership_price WHERE created_by_id = $1 ORDER BY effective_from DESC, created_at DESC LIMIT 1',
+      [fixture.admin.id],
+    )
+    expect(persistedPrice?.amount).toBe('13000.75')
+    expect(persistedPrice?.effective_from).toEqual(new Date('2094-01-01T03:00:00.000Z'))
 
     await loginThroughTheUi(page, fixture.member.email, fixture.password)
     await menuEntry(page).click()
@@ -316,9 +329,17 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
     const at = (days: number, hoursUtc: number) => new Date(monday.getTime() + days * 86_400_000 + hoursUtc * 3_600_000)
     const classData = { weekStartsOn: monday.toISOString().slice(0, 10), activity: 'Yoga', startsAt: at(1, 15).toISOString(), branchId: fixture.branch.id, trainerId: fixture.trainer.id }
     const yoga = await createdByAdmin('/scheduled-classes', classData)
+    const [createdClass] = await db.rows<{ activity: string; branch_id: string; trainer_id: string; starts_at: Date; week_starts_on: string }>(
+      'SELECT sc.activity, sc.branch_id, sc.trainer_id, sc.starts_at, ws.week_starts_on::text AS week_starts_on FROM scheduled_class sc JOIN weekly_schedule ws ON ws.id = sc.schedule_id WHERE sc.id = $1',
+      [yoga.id],
+    )
+    expect(createdClass).toMatchObject({ activity: 'Yoga', branch_id: fixture.branch.id, trainer_id: fixture.trainer.id, starts_at: at(1, 15), week_starts_on: monday.toISOString().slice(0, 10) })
     expect((await send('PATCH', `/scheduled-classes/${yoga.id}`, tokens.admin, { startsAt: at(2, 13).toISOString() })).status()).toBe(200)
+    const [updatedClass] = await db.rows<{ starts_at: Date }>('SELECT starts_at FROM scheduled_class WHERE id = $1', [yoga.id])
+    expect(updatedClass?.starts_at).toEqual(at(2, 13))
     const pilates = await createdByAdmin('/scheduled-classes', { ...classData, activity: 'Pilates' })
     expect((await send('DELETE', `/scheduled-classes/${pilates.id}`, tokens.admin)).status()).toBe(204)
+    expect(await db.rows('SELECT id FROM scheduled_class WHERE id = $1', [pilates.id])).toHaveLength(0)
 
     const unread = await unreadInDatabase(userId('trainer'))
     await loginThroughTheUi(page, fixture.trainer.email, fixture.password)
@@ -446,5 +467,78 @@ test.describe('[backend y PostgreSQL reales] notificaciones', () => {
       await expect(page.locator('.app-topbar .app-nav-badge')).toHaveCount(0)
       expect(await unreadInDatabase(userId('otherMember'))).toBe(0)
     })
+  })
+
+  test('caso 11: restablecimiento administrativo, cambio obligatorio y vuelta al acceso normal', async ({ browser }) => {
+    const admin = await openSessionOf(browser, 'admin')
+    let memberContext: Awaited<ReturnType<Browser['newContext']>> | undefined
+    try {
+      await admin.page.goto(`/admin/usuarios/${fixture.member.id}`)
+      await admin.page.getByRole('button', { name: 'Restablecer contraseña' }).click()
+      await admin.page.getByRole('button', { name: 'Generar contraseña temporal' }).click()
+      const temporaryPassword = await admin.page.getByLabel('Contraseña temporal generada').inputValue()
+      expect(temporaryPassword).toMatch(/^[A-Za-z0-9_-]{43}$/)
+      const staleSession = await send('GET', '/notifications', tokens.member)
+      expect(staleSession.status()).toBe(401)
+
+      const temporaryLogin = await api.post(`${apiUrl}/auth/login`, {
+        data: { email: fixture.member.email, password: temporaryPassword },
+      })
+      expect(temporaryLogin.status()).toBe(200)
+      const temporarySession = await temporaryLogin.json()
+      expect(temporarySession.user.isPasswordChangeRequired).toBe(true)
+      expect((await api.get(`${apiUrl}/notifications`, {
+        headers: { Authorization: `Bearer ${temporarySession.accessToken}` },
+      })).status()).toBe(403)
+
+      const audit = await send('GET', `/users/${fixture.member.id}/audit-logs?page=1&limit=100`, tokens.admin)
+      expect(audit.status()).toBe(200)
+      const auditContent = JSON.stringify(await audit.json())
+      expect(auditContent).not.toContain(temporaryPassword)
+
+      memberContext = await browser.newContext({ baseURL: APP_URL })
+      const memberPage = await memberContext.newPage()
+      await loginThroughTheUi(memberPage, fixture.member.email, temporaryPassword)
+      await expect(memberPage).toHaveURL(/\/cambiar-contrasena$/)
+
+      // Restore the seeded credential so the following real-backend specs can reuse this fixture.
+      const newPassword = fixture.password
+      await memberPage.getByLabel('Contraseña actual').fill(temporaryPassword)
+      await memberPage.getByLabel('Nueva contraseña', { exact: true }).fill(newPassword)
+      await memberPage.getByLabel('Confirmar nueva contraseña').fill(newPassword)
+      await memberPage.getByRole('button', { name: 'Guardar contraseña' }).click()
+      await expect(memberPage).toHaveURL(/\/socio$/)
+
+      const oldPasswordLogin = await api.post(`${apiUrl}/auth/login`, {
+        data: { email: fixture.member.email, password: temporaryPassword },
+      })
+      expect(oldPasswordLogin.status()).toBe(401)
+
+      const normalLogin = await api.post(`${apiUrl}/auth/login`, {
+        data: { email: fixture.member.email, password: newPassword },
+      })
+      expect(normalLogin.status()).toBe(200)
+      const normalSession = await normalLogin.json()
+      expect(normalSession.user.isPasswordChangeRequired).toBe(false)
+      expect((await api.get(`${apiUrl}/notifications`, {
+        headers: { Authorization: `Bearer ${normalSession.accessToken}` },
+      })).status()).toBe(200)
+
+      const [account] = await db.rows<{ is_password_change_required: boolean }>(
+        'SELECT is_password_change_required FROM "user" WHERE id = $1',
+        [fixture.member.id],
+      )
+      expect(account?.is_password_change_required).toBe(false)
+      const notices = await db.rows<{ title: string; message: string }>(
+        'SELECT title, message FROM notification WHERE user_id = $1',
+        [fixture.member.id],
+      )
+      expect(JSON.stringify(notices)).not.toContain(temporaryPassword)
+      expect(JSON.stringify(notices)).not.toContain(newPassword)
+      expect(auditContent).not.toContain(newPassword)
+    } finally {
+      await memberContext?.close()
+      await admin.context.close()
+    }
   })
 })

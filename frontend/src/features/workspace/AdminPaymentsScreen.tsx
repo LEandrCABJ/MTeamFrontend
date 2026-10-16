@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useApiResource } from '../../hooks/use-api-resource'
 import { backendApi, type MemberListItem, type PaymentPreview, type PaymentStatus } from '../../service/backend-api'
 import { addDays, formatDate, formatDateTime, gymDate } from '../../service/date-time'
@@ -95,7 +95,7 @@ export function AdminPaymentsScreen() {
         </div>
       </section>
       <aside className="admin-payment-side">
-        <PriceForm current={data.currentPrice?.amount ?? null} activeMembers={data.metrics.activeMembers} onSaved={() => void reload()} />
+        <PriceForm current={data.currentPrice?.amount ?? null} onSaved={() => void reload()} />
         <section className="surface-card payment-side-card"><h2>Historial de valores</h2><div className="price-history">{data.prices.items.length ? data.prices.items.map((price) => <p key={price.id}><span>Desde {formatDate(price.effectiveFrom)}</span><strong>{money(price.amount)}</strong></p>) : <EmptyState message="No hay valores registrados." />}</div></section>
         <section className="surface-card payment-side-card"><h2>Estado de las cuotas</h2><div className="membership-state-list"><p><span>Al día</span><strong className="state-count state-count-blue">{data.metrics.currentMemberships}</strong></p><p><span>Próximas a vencer (≤5 días)</span><strong className="state-count state-count-purple">{data.metrics.expiringMemberships}</strong></p><p><span>Vencidas</span><strong className="state-count state-count-pink">{data.metrics.expiredMemberships}</strong></p></div></section>
       </aside>
@@ -111,18 +111,25 @@ export function AdminPaymentsScreen() {
   }
 }
 
-function PriceForm({ current, activeMembers, onSaved }: { current: string | null; activeMembers: number; onSaved: () => void }) {
+function PriceForm({ current, onSaved }: { current: string | null; onSaved: () => void }) {
   const [amount, setAmount] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(gymDate())
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const requestKey = useRef<{ payload: string; key: string } | null>(null)
   async function submit(event: FormEvent) {
     event.preventDefault(); setSaving(true); setNotice('')
-    try { await backendApi.createPrice(Number(amount), `${effectiveFrom}T00:00:00-03:00`); setAmount(''); setNotice('Nuevo valor registrado correctamente.'); onSaved() }
+    const effectiveDateTime = `${effectiveFrom}T00:00:00-03:00`
+    const payload = JSON.stringify({ amount: Number(amount), effectiveFrom: effectiveDateTime })
+    const idempotencyKey = requestKey.current?.payload === payload
+      ? requestKey.current.key
+      : crypto.randomUUID()
+    requestKey.current = { payload, key: idempotencyKey }
+    try { await backendApi.createPrice(Number(amount), effectiveDateTime, idempotencyKey); requestKey.current = null; setAmount(''); setNotice('Nuevo valor registrado correctamente.'); onSaved() }
     catch (value) { setNotice(value instanceof Error ? value.message : 'No se pudo registrar el valor.') }
     finally { setSaving(false) }
   }
-  return <section className="surface-card payment-price-card"><h2>Cambiar el valor de la cuota</h2><form onSubmit={submit}><label className="read-field"><span>Nuevo valor</span><input aria-label="Nuevo valor" type="number" min="0.01" max="9999999999.99" step="0.01" placeholder={current ? money(current) : '$ 0'} value={amount} onChange={(event) => setAmount(event.target.value)} required /></label><label className="read-field"><span>Vigente desde</span><input aria-label="Vigente desde" type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} required /></label><p className="payment-price-alert"><Icon name="alert" size={20} /><span>No modifica los pagos ya acreditados. Se notifica a los {activeMembers} socios activos.</span></p>{notice && <p className="notice-inline" role="status">{notice}</p>}<button className="button button-primary button-block" disabled={saving}>{saving ? 'Guardando…' : 'Guardar nuevo valor'}</button></form></section>
+  return <section className="surface-card payment-price-card"><h2>Cambiar el valor de la cuota</h2><form onSubmit={submit}><label className="read-field"><span>Nuevo valor</span><input aria-label="Nuevo valor" type="number" min="0.01" max="9999999999.99" step="0.01" placeholder={current ? money(current) : '$ 0'} value={amount} onChange={(event) => setAmount(event.target.value)} required /></label><label className="read-field"><span>Vigente desde</span><input aria-label="Vigente desde" type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} required /></label><p className="payment-price-alert"><Icon name="alert" size={20} /><span>Los pagos ya acreditados no cambian. Solo los aumentos notifican a los socios activos; el sistema determina los destinatarios al guardar.</span></p>{notice && <p className="notice-inline" role="status">{notice}</p>}<button className="button button-primary button-block" disabled={saving}>{saving ? 'Guardando…' : 'Guardar nuevo valor'}</button></form></section>
 }
 
 function PaymentDialog({ currentPrice, onClose, onSaved }: { currentPrice: string | null; onClose: () => void; onSaved: () => void }) {
@@ -136,10 +143,33 @@ function PaymentDialog({ currentPrice, onClose, onSaved }: { currentPrice: strin
   const [preview, setPreview] = useState<PaymentPreview | null>(null)
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const requestKey = useRef<{ payload: string; key: string } | null>(null)
   const selected = useMemo(() => members?.items.find((member) => member.id === memberId), [memberId, members])
   const body = () => ({ memberId, amount: Number(amount), method, ...(receiptNumber.trim() ? { receiptNumber: receiptNumber.trim() } : {}) })
   const invalidatePreview = () => { setPreview(null); setNotice('') }
   async function previewPayment(event: FormEvent) { event.preventDefault(); setNotice(''); try { setPreview(await backendApi.previewPayment(body())) } catch (value) { setNotice(value instanceof Error ? value.message : 'No se pudo generar el resumen.') } }
-  async function confirmPayment() { setSaving(true); setNotice(''); try { await backendApi.createPayment(body()); onSaved() } catch (value) { setNotice(value instanceof Error ? value.message : 'No se pudo acreditar el pago.') } finally { setSaving(false) } }
+  async function confirmPayment() {
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
+    setNotice('')
+    const paymentBody = body()
+    const payload = JSON.stringify(paymentBody)
+    const idempotencyKey = requestKey.current?.payload === payload
+      ? requestKey.current.key
+      : crypto.randomUUID()
+    requestKey.current = { payload, key: idempotencyKey }
+    try {
+      await backendApi.createPayment(paymentBody, idempotencyKey)
+      requestKey.current = null
+      onSaved()
+    } catch (value) {
+      setNotice(value instanceof Error ? value.message : 'No se pudo acreditar el pago.')
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }
   return <div className="dialog-backdrop payment-dialog-backdrop" role="presentation"><section className="workspace-dialog payment-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title"><header className="payment-dialog-header"><div><h2 id="payment-dialog-title">Registrar y acreditar un pago</h2><p>Revisá el resumen antes de confirmar: la acreditación genera una nueva vigencia de 30 días.</p></div><button type="button" className="dialog-close" aria-label="Cerrar" onClick={onClose}><Icon name="close" /></button></header><form onSubmit={previewPayment}><div className="payment-dialog-body"><label className="read-field payment-member-field"><span>Socio</span><span className="payment-member-search"><Icon name="search" size={20} /><input aria-label="Buscar socio" value={search} onChange={(event) => { setSearch(event.target.value); setMemberId(''); invalidatePreview() }} placeholder="Buscar por nombre o documento" /></span><select aria-label="Socio" value={memberId} onChange={(event) => { setMemberId(event.target.value); invalidatePreview() }} required><option value="">Seleccioná un socio</option>{members?.items.map((member: MemberListItem) => <option key={member.id} value={member.id}>{member.firstName} {member.lastName} · DNI {member.documentNumber}</option>)}</select></label><div className="payment-dialog-row"><label className="read-field"><span>Importe</span><input aria-label="Importe" type="number" min="0.01" max="9999999999.99" step="0.01" value={amount} onChange={(event) => { setAmount(event.target.value); invalidatePreview() }} required /></label><label className="read-field"><span>Medio de pago</span><select aria-label="Medio de pago" value={method} onChange={(event) => { setMethod(event.target.value); invalidatePreview() }} required><option>Efectivo</option><option>Débito</option><option>Transferencia</option></select></label></div><label className="read-field"><span>Número de comprobante</span><input aria-label="Número de comprobante" value={receiptNumber} maxLength={100} onChange={(event) => { setReceiptNumber(event.target.value); invalidatePreview() }} placeholder="0001-0456" /></label>{loading && <LoadingState message="Buscando socios…" />}{error && <ErrorState message={error} retry={() => void reload()} />}{selected && <div className="payment-operation-summary"><span className="payment-summary-title">RESUMEN DE LA OPERACIÓN</span><p><span>Socio</span><strong>{selected.firstName} {selected.lastName}</strong></p><p><span>Valor vigente de la cuota</span><strong>{money(currentPrice)}</strong></p><p><span>Vencimiento actual</span><strong>{formatDate(selected.expiresAt)}</strong></p><div className="payment-summary-divider" /><p className="payment-new-expiration"><span>Nuevo vencimiento</span><strong>{preview ? formatDate(preview.estimatedExpiresAt) : 'Pendiente de validar'}</strong></p><small>Los días restantes del vencimiento anterior no se acumulan.</small></div>}{notice && <p className="error-message" role="alert">{notice}</p>}</div><footer className="dialog-actions payment-dialog-actions"><button type="button" className="button button-secondary" onClick={onClose}>Cancelar</button>{preview ? <button type="button" className="button button-primary" disabled={saving} onClick={() => void confirmPayment()}><Icon name="check" size={20} />{saving ? 'Acreditando…' : 'Confirmar y acreditar'}</button> : <button className="button button-primary" disabled={!selected}><Icon name="check" size={20} />Revisar y acreditar</button>}</footer></form></section></div>
 }

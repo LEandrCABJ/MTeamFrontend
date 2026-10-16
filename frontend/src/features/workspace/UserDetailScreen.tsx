@@ -110,7 +110,7 @@ export function UserDetailScreen({ id }: { id: string }) {
       </aside>
     </div>
     {editorOpen && <UserEditorDialog user={data} onClose={() => setEditorOpen(false)} onUpdated={(updated) => handleUpdated(updated, 'Datos actualizados correctamente.')}/>}
-    {passwordOpen && <PasswordDialog userId={data.id} onClose={() => setPasswordOpen(false)} onSaved={() => { setPasswordOpen(false); setActionMessage('Contraseña temporal asignada. El usuario deberá cambiarla al ingresar.'); setActionError('') }}/>}
+    {passwordOpen && <PasswordDialog userId={data.id} onClose={() => { setPasswordOpen(false); void reload() }} onSaved={() => { setActionMessage('Contraseña temporal generada. El usuario deberá cambiarla al ingresar.'); setActionError('') }}/>}
   </div>
 }
 
@@ -205,15 +205,17 @@ function UserEditorDialog({ user, onClose, onUpdated }: { user: AdminUserDetail;
 }
 
 function PasswordDialog({ userId, onClose, onSaved }: { userId: string; onClose: () => void; onSaved: () => void }) {
-  const [password, setPassword] = useState('')
+  const [temporaryPassword, setTemporaryPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSaving(true)
     setError('')
     try {
-      await backendApi.resetUserPassword(userId, password)
+      const result = await backendApi.resetUserPassword(userId)
+      setTemporaryPassword(result.temporaryPassword)
       onSaved()
     } catch (value) {
       setError(value instanceof Error ? value.message : 'No se pudo restablecer la contraseña.')
@@ -221,7 +223,27 @@ function PasswordDialog({ userId, onClose, onSaved }: { userId: string; onClose:
       setSaving(false)
     }
   }
-  return <Dialog title="Restablecer contraseña" onClose={onClose}><p className="dialog-help">La nueva contraseña será temporal y el usuario deberá cambiarla al ingresar.</p><form onSubmit={(event) => void submit(event)}><Input label="Nueva contraseña temporal" type="password" value={password} minLength={8} maxLength={72} hint="Entre 8 y 72 caracteres." onChange={setPassword}/>{error && <p className="error-message" role="alert">{error}</p>}<div className="dialog-actions"><button type="button" className="button button-secondary" onClick={onClose}>Cancelar</button><button className="button button-primary" disabled={saving || password.length < 8}>{saving ? 'Guardando…' : 'Restablecer'}</button></div></form></Dialog>
+  return <Dialog title="Restablecer contraseña" onClose={onClose}>
+    {!temporaryPassword ? <>
+      <p className="dialog-help">Se generará una contraseña aleatoria. El usuario deberá cambiarla al ingresar.</p>
+      <form onSubmit={(event) => void submit(event)}>
+        {error && <p className="error-message" role="alert">{error}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="button button-secondary" onClick={onClose}>Cancelar</button>
+          <button className="button button-primary" disabled={saving}>{saving ? 'Generando…' : 'Generar contraseña temporal'}</button>
+        </div>
+      </form>
+    </> : <>
+      <p className="dialog-help">Copiá esta contraseña y compartila directamente con el usuario. Solo se muestra ahora; no se incluye en notificaciones ni en el historial.</p>
+      <label className="read-field"><span>Contraseña temporal</span><input aria-label="Contraseña temporal generada" type="text" readOnly value={temporaryPassword} onFocus={(event) => event.currentTarget.select()}/></label>
+      {error && <p className="error-message" role="alert">{error}</p>}
+      {copied && <p role="status">Contraseña copiada.</p>}
+      <div className="dialog-actions">
+        <button type="button" className="button button-secondary" onClick={() => void navigator.clipboard.writeText(temporaryPassword).then(() => { setCopied(true); setError('') }).catch(() => setError('No se pudo copiar. Seleccioná la contraseña y copiala manualmente.'))}>Copiar</button>
+        <button type="button" className="button button-primary" onClick={onClose}>Cerrar</button>
+      </div>
+    </>}
+  </Dialog>
 }
 
 function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
