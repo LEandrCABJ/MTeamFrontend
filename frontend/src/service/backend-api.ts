@@ -405,10 +405,9 @@ export const backendApi = {
       method: 'PATCH',
       body: { status, ...(reason ? { reason } : {}) },
     }),
-  resetUserPassword: (id: string, temporaryPassword: string) =>
-    apiRequest<void>(`/users/${id}/password-resets`, {
+  resetUserPassword: (id: string) =>
+    apiRequest<{ temporaryPassword: string }>(`/users/${id}/password-resets`, {
       method: 'POST',
-      body: { temporaryPassword },
     }),
   listUserAuditLogs: (id: string, page = 1, limit = 20) =>
     apiRequest<Page<UserAuditLog>>(`/users/${id}/audit-logs${queryString({ page, limit })}`),
@@ -477,9 +476,10 @@ export const backendApi = {
   getCurrentPrice: () => apiRequest<MembershipPrice>('/membership-prices/current'),
   listPrices: (page = 1, limit = 20) =>
     apiRequest<Page<MembershipPrice>>(`/membership-prices${queryString({ page, limit })}`),
-  createPrice: (amount: number, effectiveFrom: string) =>
+  createPrice: (amount: number, effectiveFrom: string, idempotencyKey: string) =>
     apiRequest<MembershipPrice>('/membership-prices', {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: { amount, effectiveFrom },
     }),
 
@@ -558,7 +558,11 @@ export const backendApi = {
     amount: number
     method: string
     receiptNumber?: string
-  }) => apiRequest<Payment>('/payments', { method: 'POST', body }),
+  }, idempotencyKey: string) => apiRequest<Payment>('/payments', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body,
+  }),
   voidPayment: (id: string, reason: string) =>
     apiRequest<Payment>(`/payments/${id}/voids`, { method: 'POST', body: { reason } }),
 
