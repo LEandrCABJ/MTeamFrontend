@@ -113,3 +113,56 @@
   .access-attempt-card > .badge { font-size: 8px; }
   .initial-period-summary, .schedule-status-summary { font-size: 11px; }
 }
+
+/* Trainer home: preserve existing workspace navigation and other role dashboards. */
+.trainer-dashboard { gap: 26px; }
+.trainer-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.trainer-status-grid .status-card { min-height: 128px; padding: 20px; }
+.trainer-status-grid .status-card-value { font-size: 22px; }
+.trainer-actions { display: flex; gap: 12px; }
+.trainer-actions .button { min-height: 44px; }
+.trainer-content-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.trainer-section { display: grid; gap: 16px; min-width: 0; }
+.trainer-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trainer-section-heading h2 { margin: 0; font-size: 24px; line-height: 1.35; }
+.trainer-section-heading .text-link { font-size: 12px; }
+.trainer-class-card { display: flex; align-items: center; gap: 16px; min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--white); box-shadow: var(--card-shadow); }
+.trainer-class-card time { font-size: 18px; font-weight: 700; flex: none; }
+.trainer-class-copy { flex: 1; min-width: 0; border-left: 3px solid var(--pink); padding-left: 16px; }
+.trainer-class-copy h3 { margin: 0 0 5px; font-size: 16px; overflow-wrap: anywhere; }
+.trainer-class-copy p { margin: 0; color: var(--text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.trainer-accent-1 { border-color: var(--purple); }
+.trainer-accent-2 { border-color: var(--blue); }
+.trainer-class-card .badge { max-width: 110px; text-align: center; white-space: normal; }
+.trainer-news-card { padding: 22px; border: 1px solid var(--border); border-radius: 14px; background: var(--white); }
+.trainer-news-card ul { margin: 0 0 16px; padding-left: 18px; color: var(--text-secondary); }
+.trainer-news-card li { padding: 5px 0; overflow-wrap: anywhere; }
+.trainer-news-card li a { color: inherit; }
+.trainer-data-note { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.trainer-dashboard .member-branch-title-row h3 { font-size: 20px; }
+.trainer-dashboard .member-branch-content p { font-size: 14px; overflow-wrap: anywhere; }
+@media (max-width: 1100px) and (min-width: 701px) {
+  .trainer-status-grid { gap: 10px; }
+  .trainer-status-grid .status-card { padding: 14px; }
+  .trainer-class-card { flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+  .trainer-dashboard { gap: 18px; }
+  .trainer-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .trainer-status-grid .status-card { min-height: 104px; padding: 14px; gap: 6px; }
+  .trainer-status-grid .status-card-value { font-size: 18px; }
+  .trainer-status-grid .status-card-label { font-size: 10px; }
+  .trainer-status-grid .status-card-sub { font-size: 11px; }
+  .trainer-actions .button { width: 100%; }
+  .trainer-content-grid { grid-template-columns: minmax(0, 1fr); }
+  .trainer-section { gap: 12px; }
+  .trainer-section-heading h2 { font-size: 19px; }
+  .trainer-class-card { gap: 10px; padding: 14px 12px; flex-wrap: wrap; }
+  .trainer-class-card time { font-size: 15px; }
+  .trainer-class-copy { padding-left: 10px; }
+  .trainer-class-copy h3 { font-size: 14px; }
+  .trainer-class-copy p { font-size: 12px; }
+  .trainer-class-card .badge { font-size: 10px; }
+  .trainer-dashboard .member-branch-image { height: 160px; }
+  .trainer-dashboard .member-branch-content { padding: 16px; }
+}
