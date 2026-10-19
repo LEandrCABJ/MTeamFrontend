@@ -13,7 +13,7 @@ export function PublicSite() {
   return <div className="public-site">
     <header className="public-header">
       <Link className="brand-lockup" to="/" aria-label="M-Team Gimnasio, inicio"><span className="brand-mark">M</span><span>M-TEAM <b>GIMNASIO</b></span></Link>
-      <nav className="public-nav" aria-label="Navegación principal">{[['Inicio','/'],['Sedes','/sedes'],['Eventos','/eventos'],['Novedades','/novedades'],['Preguntas frecuentes','/preguntas-frecuentes']].map(([label,href])=><Link key={href} className={active===href.slice(1)||(href==='/'&&active==='Inicio')?'active':''} to={href}>{label}</Link>)}</nav>
+      <nav className="public-nav" aria-label="Navegación principal">{[['Inicio','/'],['Preguntas frecuentes','/preguntas-frecuentes']].map(([label,href])=><Link key={href} className={active===href.slice(1)||(href==='/'&&active==='Inicio')?'active':''} to={href}>{label}</Link>)}</nav>
       <div className="public-actions"><Link className="button button-secondary" to="/iniciar-sesion">Iniciar sesión</Link><Link className="button button-primary" to="/crear-cuenta">Crear cuenta</Link></div>
       <Link className="mobile-signin" to="/iniciar-sesion">Ingresar</Link>
     </header>
