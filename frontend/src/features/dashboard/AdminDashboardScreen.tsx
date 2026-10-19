@@ -12,7 +12,6 @@ import { weekRangeLabel } from '../schedule/schedule-model'
 import './dashboard.css'
 
 const ROLE_LABEL = { MEMBER: 'Socio', TRAINER: 'Entrenador', ADMIN: 'Administrador' } as const
-const NO_API = 'El backend todavía no expone esta funcionalidad'
 const MORE_SECTIONS: QuickAction[] = [
   { label: 'Accesos', icon: 'qr', to: '/admin/accesos' },
   { label: 'Sedes', icon: 'building', to: '/admin/sedes' },
@@ -28,7 +27,7 @@ function buildActions(pendingMedicalCertificates: number | undefined): QuickActi
     { label: 'Registrar un pago', icon: 'wallet', to: '/admin/pagos', primary: true },
     { label: pendingLabel, icon: 'file', to: '/admin/aptos' },
     { label: 'Crear una cuenta', icon: 'users', to: '/admin/usuarios' },
-    { label: 'Publicar una novedad', icon: 'megaphone', unavailableReason: NO_API },
+    { label: 'Publicar una novedad', icon: 'megaphone', to: '/admin/novedades' },
   ]
 }
 
@@ -69,7 +68,7 @@ export function AdminDashboardScreen() {
     return <div className="app-page dashboard-screen">
       <DashboardHeader greeting={greeting} intro={`Resumen de hoy · ${formatNumericDate(gymDate())}`}/>
       {statusSection}
-      <QuickActions title="Acciones frecuentes" actions={actions.slice(0, 3)}/>
+      <QuickActions title="Acciones frecuentes" actions={actions}/>
       <DashboardCard title="Más secciones"><div className="more-sections">{MORE_SECTIONS.map((action) => <ActionButton key={action.label} action={action}/>)}</div></DashboardCard>
       <AccessAttemptsCard loading={access.loading} error={access.error} data={access.data?.items ?? []} retry={() => void access.reload()} isMobile/>
     </div>
