@@ -2,76 +2,49 @@ import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useApiResource } from '../../hooks/use-api-resource'
 import { useIsMobile } from '../../hooks/use-is-mobile'
-import { backendApi, type Branch, type MembershipStatus } from '../../service/backend-api'
-import { formatDate } from '../../service/date-time'
+import { backendApi, type Branch } from '../../service/backend-api'
 import { useAuth } from '../authentication/use-auth'
 import { ErrorState, LoadingState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { SafeImage } from '../workspace/SafeImage'
-import { StatusCard, type StatusTone } from '../workspace/StatusCard'
+import { StatusCard } from '../workspace/StatusCard'
 import { DashboardHeader } from './DashboardParts'
-import { formatMoney } from './dashboard-data'
+import { describeAccess, describeFee, describeMedical, describeMembership, readSource } from './member-situation'
 import './dashboard.css'
-
-const MEMBERSHIP_STATUS: Record<MembershipStatus, { label: string; tone: StatusTone }> = {
-  CURRENT: { label: 'Al día', tone: 'blue' },
-  EXPIRING_SOON: { label: 'Por vencer', tone: 'purple' },
-  EXPIRED: { label: 'Vencida', tone: 'pink' },
-}
-
-const MEDICAL_STATUS = {
-  APPROVED: { label: 'Aprobado', tone: 'blue' as StatusTone },
-  PENDING: { label: 'Pendiente', tone: 'purple' as StatusTone },
-  REJECTED: { label: 'Rechazado', tone: 'pink' as StatusTone },
-}
 
 export function MemberDashboardScreen() {
   const { session } = useAuth()
   const isMobile = useIsMobile()
-  const membership = useApiResource(backendApi.getOwnMembership)
-  const medical = useApiResource(() => backendApi.getOwnMedicalCertificates())
+  const membershipResource = useApiResource(backendApi.getOwnMembership)
+  // The loader must keep its identity between renders: `useApiResource` reloads whenever it changes.
+  const medicalResource = useApiResource(useCallback(() => backendApi.getOwnMedicalCertificates(), []))
   const branches = useApiResource(useCallback(() => backendApi.listBranches('', 1, 100), []))
   const firstName = session?.user.firstName ?? ''
-  const accountLabel = session?.user.status === 'ACTIVE' ? 'Tu cuenta está habilitada.' : 'Tu cuenta está deshabilitada.'
-  const header = <DashboardHeader
-    eyebrow={isMobile ? undefined : 'BIENVENIDO A M-TEAM'}
-    greeting={`¡Hola, ${firstName}!`}
-    intro={isMobile ? accountLabel : `${accountLabel} Consultá tu cuota, tu apto médico y nuestras sedes.`}
-  />
-
-  if (membership.loading) return <div className="app-page member-dashboard">{header}<div className="app-card"><LoadingState message="Cargando tu situación…"/></div></div>
-  if (membership.error || !membership.data) return <div className="app-page member-dashboard">{header}<div className="app-card"><ErrorState message={membership.error || 'No se pudo cargar tu situación.'} retry={() => void membership.reload()}/></div></div>
-
-  const membershipStatus = MEMBERSHIP_STATUS[membership.data.status]
-  const medicalView = medical.data?.current ? MEDICAL_STATUS[medical.data.current.status] : null
-  const medicalValue = medical.loading ? 'Cargando…' : medical.error ? 'No disponible' : medicalView?.label ?? 'Sin cargar'
-  const medicalSub = medical.loading
-    ? 'Consultando el backend'
-    : medical.error
-      ? 'Revisá la pantalla de apto médico'
-      : medical.data?.current?.reviewedAt
-        ? `Revisado el ${formatDate(medical.data.current.reviewedAt)}`
-        : medicalView?.label === 'Pendiente' ? 'En revisión' : 'Todavía no cargaste un apto'
+  const accountActive = session?.user.status === 'ACTIVE'
+  const accountLabel = accountActive ? 'Tu cuenta está habilitada.' : 'Tu cuenta está deshabilitada.'
+  const membership = readSource(membershipResource)
+  const medical = readSource(medicalResource)
+  const rejected = medical.state === 'ready' && medical.data.current?.status === 'REJECTED' ? medical.data.current : null
 
   return <div className="app-page member-dashboard">
-    {header}
+    <DashboardHeader
+      eyebrow={isMobile ? undefined : 'BIENVENIDO A M-TEAM'}
+      greeting={`¡Hola, ${firstName}!`}
+      intro={isMobile ? accountLabel : `${accountLabel} Consultá tu cuota, tu apto médico y nuestras sedes.`}
+    />
     <div className="member-status-grid">
-      <StatusCard
-        label="ESTADO DE CUOTA"
-        value={membershipStatus.label}
-        tone={membershipStatus.tone}
-        sub={membership.data.expiresAt ? `Vence el ${formatDate(membership.data.expiresAt)} · ${membership.data.daysRemaining} días` : 'Sin vencimiento informado'}
-        to="/socio/pagos"
-      />
-      <StatusCard label="APTO MÉDICO" value={medicalValue} tone={medicalView?.tone ?? 'purple'} sub={medicalSub} to="/socio/apto-medico"/>
-      <StatusCard label="ACCESO AL GIMNASIO" value="No disponible" tone="black" sub="El módulo de acceso todavía no está implementado"/>
-      <StatusCard label="VALOR DE LA CUOTA" value={formatMoney(membership.data.currentPrice)} tone="black" sub="Valor informado por el backend" to="/socio/pagos"/>
+      <StatusCard label="ESTADO DE CUOTA" {...describeMembership(membership)} to="/socio/pagos"/>
+      <StatusCard label="APTO MÉDICO" {...describeMedical(medical)} to="/socio/apto-medico"/>
+      <StatusCard label="ACCESO AL GIMNASIO" {...describeAccess({ accountActive, membership, medical })}/>
+      <StatusCard label="VALOR DE LA CUOTA" {...describeFee(membership)} to="/socio/pagos"/>
     </div>
     <div className="member-dashboard-actions" aria-label="Acciones del socio">
       <Link className="button button-secondary" to="/socio/clases"><Icon name="calendar" size={20}/>Ver mis clases</Link>
       <Link className="button button-secondary" to="/socio/apto-medico"><Icon name="file" size={20}/>Mi apto médico</Link>
     </div>
-    {medical.error && <p className="error-message" role="alert">{medical.error} <Link className="text-link" to="/socio/apto-medico">Ir a apto médico</Link></p>}
+    {membership.state === 'error' && <p className="error-message" role="alert"><span>No pudimos obtener tu cuota. {membership.message}</span> <button type="button" className="text-link" onClick={() => void membershipResource.reload()}>Reintentar</button></p>}
+    {medical.state === 'error' && <p className="error-message" role="alert"><span>No pudimos obtener tu apto médico. {medical.message}</span> <button type="button" className="text-link" onClick={() => void medicalResource.reload()}>Reintentar</button></p>}
+    {rejected && <p className="error-message" role="status"><span>Tu apto médico fue rechazado{rejected.reviewComment ? `. Observación: “${rejected.reviewComment}”` : '.'}</span> <Link className="text-link" to="/socio/apto-medico">Ver apto médico</Link></p>}
     <section className="member-branches-section" aria-labelledby="member-branches-title">
       <div className="member-section-heading">
         <h2 id="member-branches-title">Nuestras sedes</h2>
