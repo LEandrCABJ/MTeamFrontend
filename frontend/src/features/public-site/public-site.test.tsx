@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PublicSite } from './PublicSite'
@@ -26,7 +26,20 @@ describe('sitio público conectado al backend', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(response(branches))))
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('no muestra Sedes, Eventos ni Novedades en la navegación del encabezado público', () => {
+    renderPublicSite()
+    const headerNavigation = within(screen.getByRole('navigation', { name: 'Navegación principal' }))
+    expect(headerNavigation.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/')
+    expect(headerNavigation.getByRole('link', { name: 'Preguntas frecuentes' })).toHaveAttribute('href', '/preguntas-frecuentes')
+    expect(headerNavigation.queryByRole('link', { name: 'Sedes' })).not.toBeInTheDocument()
+    expect(headerNavigation.queryByRole('link', { name: 'Eventos' })).not.toBeInTheDocument()
+    expect(headerNavigation.queryByRole('link', { name: 'Novedades' })).not.toBeInTheDocument()
+  })
 
   it('carga las sedes reales y permite navegar al listado', async () => {
     renderPublicSite()
