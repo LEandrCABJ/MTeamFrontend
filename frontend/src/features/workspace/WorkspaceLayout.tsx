@@ -21,7 +21,8 @@ export function WorkspaceLayout({ user, active, title, notice, onDismissNotice, 
   children: ReactNode
 }) {
   const { unreadCount } = useNotifications()
-  // The bottom tab bar has no room for it, so on phones the bell is the way into the notifications.
+  // The bottom tab bar has no room for them, so on phones the bell is the way into the notifications and
+  // the (i) icon the way into the frequently asked questions. Administrators reach them from the panel.
   const hasNotifications = user.role !== 'ADMIN'
   return <div className="app-shell">
     <WorkspaceSidebar user={user} active={active} onLogout={onLogout}/>
@@ -29,6 +30,10 @@ export function WorkspaceLayout({ user, active, title, notice, onDismissNotice, 
       <header className="app-topbar">
         {mobileBackHref && <Link className="app-topbar-back" to={mobileBackHref} aria-label="Volver"><Icon name="back" size={22}/></Link>}
         <h1 className="app-topbar-title">{mobileTitle ?? title}</h1>
+        {hasNotifications && <Link className={active.href === 'preguntas-frecuentes' ? 'app-topbar-help is-active' : 'app-topbar-help'} to={hrefFor(user.role, 'preguntas-frecuentes')} aria-current={active.href === 'preguntas-frecuentes' ? 'page' : undefined}>
+          <Icon name="info" size={22}/>
+          <span className="visually-hidden">Preguntas frecuentes</span>
+        </Link>}
         {hasNotifications && <Link className={active.href === 'notificaciones' ? 'app-topbar-bell is-active' : 'app-topbar-bell'} to={hrefFor(user.role, 'notificaciones')} aria-current={active.href === 'notificaciones' ? 'page' : undefined}>
           <Icon name="bell" size={22}/>
           <span className="visually-hidden">Notificaciones</span>

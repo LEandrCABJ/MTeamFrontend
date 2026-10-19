@@ -109,7 +109,7 @@ describe('panel administrativo', () => {
     expect(screen.getAllByRole('button', { name: 'Reintentar' }).length).toBeGreaterThan(1)
   })
 
-  it('las acciones sin backend quedan deshabilitadas y las reales navegan', async () => {
+  it('las acciones frecuentes del panel navegan a su sección', async () => {
     stubApi(adminRoutes())
     renderWithSession(<AdminDashboardScreen/>, { user: testUser('ADMIN') })
     const actions = screen.getByRole('heading', { name: 'Acciones frecuentes' }).closest('section')!
@@ -117,7 +117,7 @@ describe('panel administrativo', () => {
     expect(within(actions).getByRole('link', { name: 'Registrar un pago' })).toHaveClass('button-primary')
     expect(within(actions).getByRole('link', { name: 'Crear una cuenta' })).toHaveAttribute('href', '/admin/usuarios')
     expect(within(actions).getByRole('link', { name: /Revisar aptos médicos/ })).toHaveAttribute('href', '/admin/aptos')
-    expect(within(actions).getByRole('button', { name: 'Publicar una novedad' })).toBeDisabled()
+    expect(within(actions).getByRole('link', { name: 'Publicar una novedad' })).toHaveAttribute('href', '/admin/novedades')
     await screen.findByText('184 socios')
   })
 
@@ -176,7 +176,7 @@ describe('panel administrativo', () => {
     const order = [...document.querySelectorAll('.dashboard-screen > *')].map((element) => element.querySelector('h2')?.textContent ?? element.className)
     expect(order).toEqual(['dashboard-header', 'status-grid admin-metrics-grid', 'Acciones frecuentes', 'Más secciones', 'Últimos accesos'])
     const more = screen.getByRole('heading', { name: 'Más secciones' }).closest('section')!
-    expect(within(more).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['/admin/accesos', '/admin/sedes', '/admin/eventos', '/admin/novedades'])
+    expect(within(more).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['/admin/accesos', '/admin/sedes', '/admin/eventos', '/admin/novedades', '/admin/preguntas-frecuentes'])
     expect(within(more).queryByText(/Cerrar sesión/)).not.toBeInTheDocument()
     const actions = screen.getByRole('heading', { name: 'Acciones frecuentes' }).closest('section')!
     expect(within(actions).getByRole('link', { name: /Revisar aptos médicos/ })).toHaveAttribute('href', '/admin/aptos')

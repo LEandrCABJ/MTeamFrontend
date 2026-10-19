@@ -40,13 +40,13 @@ describe('shell autenticado', () => {
 
   it('usa la navegación lateral del Figma para cada rol', () => {
     renderWorkspace('/socio/eventos', 'MEMBER')
-    expect(sidebarLabels()).toEqual(['Inicio', 'Mi perfil', 'Apto médico', 'Acceso QR', 'Clases', 'Eventos', 'Novedades', 'Notificaciones'])
+    expect(sidebarLabels()).toEqual(['Inicio', 'Mi perfil', 'Apto médico', 'Acceso QR', 'Clases', 'Eventos', 'Novedades', 'Notificaciones', 'Preguntas frecuentes'])
     cleanup()
     renderWorkspace('/entrenador/eventos', 'TRAINER')
-    expect(sidebarLabels()).toEqual(['Inicio', 'Mi perfil', 'Mis clases', 'Acceso QR', 'Eventos', 'Novedades', 'Notificaciones'])
+    expect(sidebarLabels()).toEqual(['Inicio', 'Mi perfil', 'Mis clases', 'Acceso QR', 'Eventos', 'Novedades', 'Notificaciones', 'Preguntas frecuentes'])
     cleanup()
     renderWorkspace('/admin/eventos', 'ADMIN')
-    expect(sidebarLabels()).toEqual(['Panel', 'Usuarios', 'Pagos y cuota', 'Aptos médicos', 'Accesos', 'Clases', 'Sedes', 'Eventos', 'Novedades'])
+    expect(sidebarLabels()).toEqual(['Panel', 'Usuarios', 'Pagos y cuota', 'Aptos médicos', 'Accesos', 'Clases', 'Sedes', 'Eventos', 'Novedades', 'Preguntas frecuentes'])
   })
 
   it('marca la sección activa, muestra el usuario y no agrega topbar de breadcrumbs', () => {
