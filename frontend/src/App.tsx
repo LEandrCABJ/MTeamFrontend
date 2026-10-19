@@ -23,6 +23,7 @@ function App() {
       <Route path="/sedes/:branchId" element={<PublicSite />} />
       <Route path="/eventos" element={<PublicSite />} />
       <Route path="/novedades" element={<PublicSite />} />
+      <Route path="/preguntas-frecuentes" element={<PublicSite />} />
       <Route path="/iniciar-sesion" element={<LoginPage />} />
       <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
       <Route path="/crear-cuenta" element={<RegisterPage />} />
