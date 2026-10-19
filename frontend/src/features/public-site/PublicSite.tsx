@@ -5,20 +5,21 @@ import { backendApi, type Branch } from '../../service/backend-api'
 import { EmptyState, ErrorState, LoadingState, UnavailableState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { SafeImage } from '../workspace/SafeImage'
+import { FrequentlyAskedQuestionsPage } from './FrequentlyAskedQuestionsPage'
 
 export function PublicSite() {
   const { pathname } = useLocation()
-  const active = pathname === '/' ? 'Inicio' : pathname.slice(1).split('/')[0]
+  const active = pathname === '/' ? 'Inicio' : pathname === '/preguntas-frecuentes' ? 'preguntas-frecuentes' : pathname.slice(1).split('/')[0]
   return <div className="public-site">
     <header className="public-header">
       <Link className="brand-lockup" to="/" aria-label="M-Team Gimnasio, inicio"><span className="brand-mark">M</span><span>M-TEAM <b>GIMNASIO</b></span></Link>
-      <nav className="public-nav" aria-label="Navegación principal">{[['Inicio','/'],['Sedes','/sedes'],['Eventos','/eventos'],['Novedades','/novedades']].map(([label,href])=><Link key={href} className={active===label.toLowerCase()||(href==='/'&&active==='Inicio')?'active':''} to={href}>{label}</Link>)}</nav>
+      <nav className="public-nav" aria-label="Navegación principal">{[['Inicio','/'],['Sedes','/sedes'],['Eventos','/eventos'],['Novedades','/novedades'],['Preguntas frecuentes','/preguntas-frecuentes']].map(([label,href])=><Link key={href} className={active===href.slice(1)||(href==='/'&&active==='Inicio')?'active':''} to={href}>{label}</Link>)}</nav>
       <div className="public-actions"><Link className="button button-secondary" to="/iniciar-sesion">Iniciar sesión</Link><Link className="button button-primary" to="/crear-cuenta">Crear cuenta</Link></div>
       <Link className="mobile-signin" to="/iniciar-sesion">Ingresar</Link>
     </header>
-    <main>{pathname==='/sedes'?<BranchesPage/>:pathname.startsWith('/sedes/')?<BranchDetailsPage id={pathname.split('/')[2]??''}/>:pathname==='/eventos'?<PublicUnavailable title="Eventos"/>:pathname==='/novedades'?<PublicUnavailable title="Novedades"/>:<LandingPage/>}</main>
-    <footer className="public-footer"><Brand/><span>Tu mejor versión, nuestro compromiso.</span><span>Consultá nuestras sedes activas</span></footer>
-    <nav className="mobile-public-tabs" aria-label="Navegación"><Link className={active==='Inicio'?'selected':''} to="/"><Icon name="home"/>Inicio</Link><Link className={active==='sedes'?'selected':''} to="/sedes"><Icon name="pin"/>Sedes</Link><Link className={active==='eventos'?'selected':''} to="/eventos"><Icon name="trophy"/>Eventos</Link><Link className={active==='novedades'?'selected':''} to="/novedades"><Icon name="megaphone"/>Novedades</Link><Link to="/iniciar-sesion"><Icon name="user"/>Ingresar</Link></nav>
+    <main>{pathname==='/sedes'?<BranchesPage/>:pathname.startsWith('/sedes/')?<BranchDetailsPage id={pathname.split('/')[2]??''}/>:pathname==='/eventos'?<PublicUnavailable title="Eventos"/>:pathname==='/novedades'?<PublicUnavailable title="Novedades"/>:pathname==='/preguntas-frecuentes'?<FrequentlyAskedQuestionsPage/>:<LandingPage/>}</main>
+    <footer className="public-footer"><Brand/><span>Tu mejor versión, nuestro compromiso.</span><Link to="/preguntas-frecuentes">Preguntas frecuentes</Link><span>Consultá nuestras sedes activas</span></footer>
+    <nav className="mobile-public-tabs" aria-label="Navegación"><Link className={active==='Inicio'?'selected':''} to="/"><Icon name="home"/>Inicio</Link><Link className={active==='sedes'?'selected':''} to="/sedes"><Icon name="pin"/>Sedes</Link><Link className={active==='eventos'?'selected':''} to="/eventos"><Icon name="trophy"/>Eventos</Link><Link className={active==='novedades'?'selected':''} to="/novedades"><Icon name="megaphone"/>Novedades</Link><Link className={active==='preguntas-frecuentes'?'selected':''} to="/preguntas-frecuentes"><Icon name="info"/>Ayuda</Link><Link to="/iniciar-sesion"><Icon name="user"/>Ingresar</Link></nav>
   </div>
 }
 
