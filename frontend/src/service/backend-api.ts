@@ -488,7 +488,11 @@ export const backendApi = {
   getOwnMedicalCertificates: (page = 1, limit = 20) =>
     apiRequest<OwnMedicalCertificateResponse>(
       `/members/me/medical-certificates${queryString({ page, limit })}`,
-    ).then(({ items, page: responsePage, limit: responseLimit, total, initialMedicalCertificatePeriod }) => {
+    ).then((response) => {
+      if (!response || !Array.isArray(response.items) || !response.initialMedicalCertificatePeriod) {
+        throw new Error('El servidor devolvió una respuesta incompleta. Intentá nuevamente.')
+      }
+      const { items, page: responsePage, limit: responseLimit, total, initialMedicalCertificatePeriod } = response
       const [current = null, ...history] = items
       return {
         current,

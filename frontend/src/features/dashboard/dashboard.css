@@ -24,6 +24,8 @@
 .member-branch-content p svg { flex: none; color: var(--text-muted); }
 .member-branch-directions { width: 100%; margin-top: 4px; }
 .member-empty-copy { margin: 0; padding: 20px; color: var(--text-secondary); text-align: center; }
+.member-dashboard .error-message { flex-wrap: wrap; }
+.member-dashboard .error-message span { min-width: 0; overflow-wrap: anywhere; }
 .admin-metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); flex-wrap: wrap; }
 
 /* A1: revenue and access on the left; actions, initial period and schedule on the right. */
