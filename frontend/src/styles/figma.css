@@ -145,6 +145,7 @@ body { background: var(--background); color: var(--black); }
 .page-header h1 { margin: 0; font-size: 32px; line-height: 1.25; font-weight: 700; color: var(--black); }
 .page-header p { margin: 0; max-width: 640px; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--text-secondary); }
 .page-header-actions { display: flex; align-items: center; gap: 12px; }
+.app-page.faq-page .faq-group { margin-top: 0; }
 
 /* Dialogs keep the project's existing styles (index.css); only scrolling and action spacing are added. */
 .workspace-dialog { max-height: calc(100vh - 40px); overflow-y: auto; }

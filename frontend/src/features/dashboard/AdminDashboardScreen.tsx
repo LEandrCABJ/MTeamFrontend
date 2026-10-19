@@ -17,6 +17,7 @@ const MORE_SECTIONS: QuickAction[] = [
   { label: 'Sedes', icon: 'building', to: '/admin/sedes' },
   { label: 'Eventos', icon: 'trophy', to: '/admin/eventos' },
   { label: 'Novedades', icon: 'megaphone', to: '/admin/novedades' },
+  { label: 'Preguntas frecuentes', icon: 'info', to: '/admin/preguntas-frecuentes' },
 ]
 
 function buildActions(pendingMedicalCertificates: number | undefined): QuickAction[] {

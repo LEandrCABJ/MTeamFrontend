@@ -20,6 +20,7 @@ import { EventsScreen } from '../communications/EventsScreen'
 import { NewsScreen } from '../communications/NewsScreen'
 import { NotificationsProvider } from '../communications/NotificationsProvider'
 import { NotificationsScreen } from '../communications/NotificationsScreen'
+import { FrequentlyAskedQuestionsPage } from '../public-site/FrequentlyAskedQuestionsPage'
 import { ProfileScreen } from './ProfileScreen'
 import { TrainerDirectoryScreen } from './TrainerDirectoryScreen'
 import { AccessScanScreen } from './AccessScanScreen'
@@ -97,6 +98,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
     if (segment === 'acceso' && (role === 'MEMBER' || role === 'TRAINER')) return <AccessScanScreen role={role}/>
     if (role === 'ADMIN' && segment === 'accesos') return <AdminAccessAttemptsScreen/>
     if (segment === 'notificaciones' && role !== 'ADMIN') return <NotificationsScreen/>
+    if (segment === 'preguntas-frecuentes') return <FrequentlyAskedQuestionsPage role={role}/>
     const unavailable = UNAVAILABLE[segment]
     if (unavailable?.roles.includes(role)) return <UnavailableScreen title={title} module={unavailable.module}/>
     return <Navigate to={base} replace/>

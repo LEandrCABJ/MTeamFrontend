@@ -30,6 +30,7 @@ export const NAVIGATION: Record<UserRole, NavEntry[]> = {
     { label: 'Eventos', tabLabel: 'Eventos', href: 'eventos', icon: 'trophy' },
     { label: 'Novedades', tabLabel: 'Novedades', href: 'novedades', icon: 'megaphone' },
     { label: 'Notificaciones', tabLabel: 'Notificaciones', href: 'notificaciones', icon: 'bell' },
+    { label: 'Preguntas frecuentes', tabLabel: 'Ayuda', href: 'preguntas-frecuentes', icon: 'info' },
   ],
   TRAINER: [
     { label: 'Inicio', tabLabel: 'Inicio', href: '', icon: 'home' },
@@ -39,6 +40,7 @@ export const NAVIGATION: Record<UserRole, NavEntry[]> = {
     { label: 'Eventos', tabLabel: 'Eventos', href: 'eventos', icon: 'trophy' },
     { label: 'Novedades', tabLabel: 'Novedades', href: 'novedades', icon: 'megaphone' },
     { label: 'Notificaciones', tabLabel: 'Notificaciones', href: 'notificaciones', icon: 'bell' },
+    { label: 'Preguntas frecuentes', tabLabel: 'Ayuda', href: 'preguntas-frecuentes', icon: 'info' },
   ],
   ADMIN: [
     { label: 'Panel', tabLabel: 'Panel', href: '', icon: 'chart' },
@@ -50,6 +52,7 @@ export const NAVIGATION: Record<UserRole, NavEntry[]> = {
     { label: 'Sedes', tabLabel: 'Sedes', href: 'sedes', icon: 'building' },
     { label: 'Eventos', tabLabel: 'Eventos', href: 'eventos', icon: 'trophy' },
     { label: 'Novedades', tabLabel: 'Novedades', href: 'novedades', icon: 'megaphone' },
+    { label: 'Preguntas frecuentes', tabLabel: 'Ayuda', href: 'preguntas-frecuentes', icon: 'info' },
   ],
 }
 
