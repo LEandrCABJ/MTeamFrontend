@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSession, requestsTo, setMobileViewport, stubApi, testUser, type ApiRoute } from '../../test/test-utils'
 import { AdminDashboardScreen } from './AdminDashboardScreen'
@@ -216,6 +216,53 @@ describe('inicio de socio y entrenador', () => {
       { id: 'other', activity: 'Yoga', day: '2026-09-08', startTime: '10:00', startsAt: '2026-09-08T10:00:00-03:00', branch: { id: 'b', name: 'Centro' }, trainer: { id: 'x', firstName: 'Bruno', lastName: 'Díaz' } },
     ],
   }
+
+  it('permite reintentar cuota, apto y sedes de forma independiente', async () => {
+    const attempts = { membership: 0, medical: 0, branches: 0 }
+    stubApi([
+      { path: '/members/me/membership', handler: () => ++attempts.membership === 1
+        ? { status: 503, body: { code: 'SERVICE_UNAVAILABLE', message: 'Cuota temporalmente no disponible' } }
+        : { body: { currentPrice: '32000', lastPaymentAt: null, expiresAt: '2026-10-01', daysRemaining: 24, status: 'CURRENT' } } },
+      { path: '/members/me/medical-certificates', handler: () => ++attempts.medical === 1
+        ? { status: 503, body: { code: 'SERVICE_UNAVAILABLE', message: 'Apto temporalmente no disponible' } }
+        : { body: { items: [], page: 1, limit: 20, total: 0, initialMedicalCertificatePeriod: { startsAt: null, expiresAt: null, daysRemaining: 0, isActive: false } } } },
+      { path: '/branches', handler: () => ++attempts.branches === 1
+        ? { status: 503, body: { code: 'SERVICE_UNAVAILABLE', message: 'Sedes temporalmente no disponibles' } }
+        : { body: { items: [], page: 1, limit: 100, total: 0 } } },
+    ])
+    renderWithSession(<MemberDashboardScreen/>, { user: testUser('MEMBER') })
+
+    const membershipAlert = await screen.findByText(/No pudimos obtener tu cuota/)
+    fireEvent.click(within(membershipAlert.closest('[role="alert"]')!).getByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText('Al día')).toBeInTheDocument()
+
+    const medicalAlert = await screen.findByText(/No pudimos obtener tu apto médico/)
+    fireEvent.click(within(medicalAlert.closest('[role="alert"]')!).getByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText('Sin cargar')).toBeInTheDocument()
+
+    const branchesError = screen.getByText('No se pudieron cargar los datos')
+    fireEvent.click(within(branchesError.closest('[role="alert"]')!).getByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText('No hay sedes disponibles para mostrar.')).toBeInTheDocument()
+    expect(attempts).toEqual({ membership: 2, medical: 2, branches: 2 })
+  })
+
+  it('muestra el rechazo médico y prioriza coordenadas en el enlace del mapa', async () => {
+    stubApi([
+      { path: '/members/me/membership', handler: () => ({ body: { currentPrice: '32000', lastPaymentAt: null, expiresAt: '2026-10-01', daysRemaining: 24, status: 'CURRENT' } }) },
+      { path: '/members/me/medical-certificates', handler: () => ({ body: {
+        items: [{ id: 'mc-rejected', memberId: 'member-id', status: 'REJECTED', uploadedAt: '2026-09-01T12:00:00Z', reviewedAt: '2026-09-02T12:00:00Z', reviewComment: 'Falta la firma', member: { id: 'member-id', firstName: 'Sofía', lastName: 'Prueba', documentNumber: '1', email: 'member@example.com' }, reviewedBy: null }],
+        page: 1, limit: 20, total: 1, initialMedicalCertificatePeriod: { startsAt: null, expiresAt: null, daysRemaining: 0, isActive: false },
+      } }) },
+      { path: '/branches', handler: () => ({ body: { items: [{ id: 'branch-gps', name: 'Sede GPS', imageUrl: '', address: 'Calle 1', openingHours: '08:00 a 22:00', phone: '', description: 'Ubicación disponible', latitude: -34.6, longitude: -58.4 }], page: 1, limit: 100, total: 1 } }) },
+    ])
+    renderWithSession(<MemberDashboardScreen/>, { user: testUser('MEMBER') })
+
+    const rejectionNotice = await screen.findByText(/Observación: “Falta la firma”/)
+    expect(rejectionNotice.closest('[role="status"]')).toHaveTextContent('Tu apto médico fue rechazado')
+    expect(screen.getByRole('link', { name: 'Ver apto médico' })).toHaveAttribute('href', '/socio/apto-medico')
+    expect(await screen.findByText('Sede GPS')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cómo llegar' })).toHaveAttribute('href', expect.stringContaining('-34.6%2C-58.4'))
+  })
 
   it('el socio ve cuota, pagos y próximas clases reales', async () => {
     stubApi([

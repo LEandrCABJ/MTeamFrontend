@@ -47,6 +47,13 @@ describe('sitio público conectado al backend', () => {
     expect(mobileNavigation.getByRole('link', { name: /Inicio/ })).toHaveAttribute('href', '/')
   })
 
+  it('abre preguntas frecuentes y marca su acceso activo en desktop y mobile', () => {
+    renderPublicSite('/preguntas-frecuentes')
+    expect(screen.getByRole('heading', { level: 1, name: 'Preguntas frecuentes' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: 'Preguntas frecuentes' })).toHaveClass('active')
+    expect(within(screen.getByRole('navigation', { name: 'Navegación' })).getByRole('link', { name: /Ayuda/ })).toHaveClass('selected')
+  })
+
   it('carga las sedes reales y permite navegar al listado', async () => {
     renderPublicSite()
     expect(screen.getByRole('heading', { name: 'Entrená en M-TEAM' })).toBeInTheDocument()
