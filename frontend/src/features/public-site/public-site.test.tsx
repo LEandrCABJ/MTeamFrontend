@@ -31,7 +31,7 @@ describe('sitio público conectado al backend', () => {
     vi.unstubAllGlobals()
   })
 
-  it('no muestra Sedes, Eventos ni Novedades en la navegación del encabezado público', () => {
+  it('no muestra Sedes, Eventos ni Novedades en la navegación pública de escritorio ni celular', () => {
     renderPublicSite()
     const headerNavigation = within(screen.getByRole('navigation', { name: 'Navegación principal' }))
     expect(headerNavigation.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/')
@@ -39,11 +39,19 @@ describe('sitio público conectado al backend', () => {
     expect(headerNavigation.queryByRole('link', { name: 'Sedes' })).not.toBeInTheDocument()
     expect(headerNavigation.queryByRole('link', { name: 'Eventos' })).not.toBeInTheDocument()
     expect(headerNavigation.queryByRole('link', { name: 'Novedades' })).not.toBeInTheDocument()
+
+    const mobileNavigation = within(screen.getByRole('navigation', { name: 'Navegación' }))
+    expect(mobileNavigation.queryByRole('link', { name: /Sedes/ })).not.toBeInTheDocument()
+    expect(mobileNavigation.queryByRole('link', { name: /Eventos/ })).not.toBeInTheDocument()
+    expect(mobileNavigation.queryByRole('link', { name: /Novedades/ })).not.toBeInTheDocument()
+    expect(mobileNavigation.getByRole('link', { name: /Inicio/ })).toHaveAttribute('href', '/')
   })
 
   it('carga las sedes reales y permite navegar al listado', async () => {
     renderPublicSite()
     expect(screen.getByRole('heading', { name: 'Entrená en M-TEAM' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Próximos eventos' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Eventos no disponible' })).not.toBeInTheDocument()
     expect(await screen.findByText('Belgrano')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('link', { name: /Ver las sedes/ }))
     expect(screen.getByRole('heading', { name: 'Sedes' })).toBeInTheDocument()

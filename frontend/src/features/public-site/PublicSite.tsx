@@ -19,7 +19,7 @@ export function PublicSite() {
     </header>
     <main>{pathname==='/sedes'?<BranchesPage/>:pathname.startsWith('/sedes/')?<BranchDetailsPage id={pathname.split('/')[2]??''}/>:pathname==='/eventos'?<PublicUnavailable title="Eventos"/>:pathname==='/novedades'?<PublicUnavailable title="Novedades"/>:pathname==='/preguntas-frecuentes'?<FrequentlyAskedQuestionsPage/>:<LandingPage/>}</main>
     <footer className="public-footer"><Brand/><span>Tu mejor versión, nuestro compromiso.</span><Link to="/preguntas-frecuentes">Preguntas frecuentes</Link><span>Consultá nuestras sedes activas</span></footer>
-    <nav className="mobile-public-tabs" aria-label="Navegación"><Link className={active==='Inicio'?'selected':''} to="/"><Icon name="home"/>Inicio</Link><Link className={active==='sedes'?'selected':''} to="/sedes"><Icon name="pin"/>Sedes</Link><Link className={active==='eventos'?'selected':''} to="/eventos"><Icon name="trophy"/>Eventos</Link><Link className={active==='novedades'?'selected':''} to="/novedades"><Icon name="megaphone"/>Novedades</Link><Link className={active==='preguntas-frecuentes'?'selected':''} to="/preguntas-frecuentes"><Icon name="info"/>Ayuda</Link><Link to="/iniciar-sesion"><Icon name="user"/>Ingresar</Link></nav>
+    <nav className="mobile-public-tabs" aria-label="Navegación"><Link className={active==='Inicio'?'selected':''} to="/"><Icon name="home"/>Inicio</Link><Link className={active==='preguntas-frecuentes'?'selected':''} to="/preguntas-frecuentes"><Icon name="info"/>Ayuda</Link><Link to="/iniciar-sesion"><Icon name="user"/>Ingresar</Link></nav>
   </div>
 }
 
@@ -32,7 +32,6 @@ function LandingPage(){
   return <>
     <section className="landing-hero"><div className="hero-copy"><span className="eyebrow">M-TEAM GIMNASIO</span><h1>Entrená en M-TEAM</h1><p>Una sola cuota mensual para entrenar en las sedes activas.</p><div className="hero-buttons"><Link className="button button-primary" to="/crear-cuenta">Crear cuenta</Link><Link className="button button-dark" to="/iniciar-sesion">Ya soy socio</Link></div></div><div className="hero-highlights"><Highlight icon="wallet" label="Cuota mensual" value="Consultala al ingresar"/><Highlight icon="calendar" label="Clases" value="Cronograma semanal"/><Highlight icon="qr" label="Ingreso" value="Acceso según tu cuenta"/></div></section>
     <section className="public-section"><SectionTitle title="Nuestras sedes" link="Ver las sedes" href="/sedes"/>{loading?<LoadingState/>:error?<ErrorState message={error} retry={()=>void reload()}/>:<BranchCards branches={data?.items??[]} compact/>}</section>
-    <section className="public-section"><SectionTitle title="Próximos eventos"/><UnavailableState module="Eventos"/></section>
     <section className="landing-cta"><h2>¿Empezamos?</h2><p>Creá tu cuenta y acercate al mostrador para registrar el primer pago.</p><Link className="button button-primary" to="/crear-cuenta">Crear cuenta</Link></section>
   </>
 }
