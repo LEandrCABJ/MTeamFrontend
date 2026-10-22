@@ -1,35 +1,52 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useId, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../authentication/auth-types'
 import { backendApi, type OwnProfile } from '../../service/backend-api'
 import { Icon } from './Icon'
 import { UserAvatar } from './UserAvatar'
+const EMAIL_PATTERN = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/
+const PHONE_PATTERN = /^(?:[1-9][0-9]{9}|\+54(?:9)?[1-9][0-9]{9})$/
+
+function isValidPhone(value: string) {
+  return /^[+0-9 ()-]+$/.test(value) && PHONE_PATTERN.test(value.replace(/[ ()-]/g, ''))
+}
+
 export function ContactDataCard({ profile, role, onUpdated, onCancel }: { profile: OwnProfile; role: UserRole; onUpdated: (profile: OwnProfile) => void; onCancel?: () => void }) {
   const [email, setEmail] = useState(profile.email)
   const [phone, setPhone] = useState(profile.phone)
   const [emergencyName, setEmergencyName] = useState(profile.memberProfile?.emergencyContactName ?? '')
   const [emergencyPhone, setEmergencyPhone] = useState(profile.memberProfile?.emergencyContactPhone ?? '')
-  const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    setSaving(true)
     setNotice('')
     setError('')
+    const errors: Record<string, string> = {}
+    if (email.trim().length > 255 || !EMAIL_PATTERN.test(email.trim())) errors.email = 'Ingresá un correo completo con un dominio válido, por ejemplo nombre@ejemplo.com.'
+    if (phone.trim().length > 30 || !isValidPhone(phone.trim())) errors.phone = 'Ingresá 10 dígitos o +54 (opcionalmente 9) seguido de 10 dígitos, sin letras.'
+    if (role === 'MEMBER') {
+      if (!emergencyName.trim() || emergencyName.trim().length > 200) errors.emergencyName = 'Ingresá el nombre del contacto de emergencia (hasta 200 caracteres).'
+      if (emergencyPhone.trim().length > 30 || !isValidPhone(emergencyPhone.trim())) errors.emergencyPhone = 'Ingresá un teléfono de emergencia válido: 10 dígitos o +54 (opcionalmente 9) seguido de 10 dígitos.'
+    }
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
+    setIsSaving(true)
     try {
       const updated = await backendApi.updateOwnProfile({
-        email,
-        phone,
-        ...(role === 'MEMBER' ? { emergencyContactName: emergencyName, emergencyContactPhone: emergencyPhone } : {}),
+        email: email.trim(),
+        phone: phone.trim(),
+        ...(role === 'MEMBER' ? { emergencyContactName: emergencyName.trim(), emergencyContactPhone: emergencyPhone.trim() } : {}),
       })
       onUpdated(updated)
       setNotice('Cambios guardados correctamente.')
     } catch (value) {
       setError(value instanceof Error ? value.message : 'No se pudieron guardar los cambios.')
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -40,22 +57,23 @@ export function ContactDataCard({ profile, role, onUpdated, onCancel }: { profil
     setEmergencyPhone(profile.memberProfile?.emergencyContactPhone ?? '')
     setNotice('')
     setError('')
+    setFieldErrors({})
     onCancel?.()
   }
 
   return <section className="surface-card profile-section profile-contact-section" aria-labelledby="contact-data-title">
     <h2 id="contact-data-title">Datos de contacto</h2>
-    <form onSubmit={submit}>
+    <form onSubmit={submit} noValidate>
       <div className="profile-edit-grid">
-        <EditableField label="Correo electrónico" value={email} type="email" onChange={setEmail}/>
-        <EditableField label="Teléfono" value={phone} type="tel" onChange={setPhone}/>
+        <EditableField label="Correo electrónico" error={fieldErrors.email} value={email} type="email" onChange={setEmail}/>
+        <EditableField label="Teléfono" error={fieldErrors.phone} value={phone} type="tel" onChange={setPhone}/>
       </div>
-      {role === 'MEMBER' && <div className="profile-emergency-block"><h3>Contacto de emergencia</h3><div className="profile-edit-grid"><EditableField label="Nombre y apellido" value={emergencyName} onChange={setEmergencyName}/><EditableField label="Teléfono" value={emergencyPhone} type="tel" onChange={setEmergencyPhone}/></div></div>}
+      {role === 'MEMBER' && <div className="profile-emergency-block"><h3>Contacto de emergencia</h3><div className="profile-edit-grid"><EditableField label="Nombre y apellido" error={fieldErrors.emergencyName} value={emergencyName} onChange={setEmergencyName}/><EditableField label="Teléfono" error={fieldErrors.emergencyPhone} value={emergencyPhone} type="tel" onChange={setEmergencyPhone}/></div></div>}
       {notice && <p className="success-message" role="status">{notice}</p>}
       {error && <p className="error-message" role="alert">{error}</p>}
       <div className="profile-form-actions">
         <button type="button" className="button button-secondary" onClick={cancel}>Cancelar</button>
-        <button className="button button-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>
+        <button className="button button-primary" disabled={isSaving}>{isSaving ? 'Guardando…' : 'Guardar cambios'}</button>
       </div>
       {role === 'MEMBER' && <Link className="button button-secondary profile-mobile-medical-button" to="/socio/apto-medico"><Icon name="file" size={18}/>Apto médico</Link>}
     </form>
@@ -109,6 +127,7 @@ export function SecurityCard({ onPasswordChange }: { onPasswordChange: () => voi
   </section>
 }
 
-function EditableField({ label, value, type = 'text', onChange }: { label: string; value: string; type?: string; onChange: (value: string) => void }) {
-  return <label className="read-field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)}/></label>
+function EditableField({ label, value, type = 'text', onChange, error }: { label: string; value: string; type?: string; onChange: (value: string) => void; error?: string }) {
+  const errorId = useId()
+  return <label className="read-field"><span>{label}</span><input type={type} value={value} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} onChange={(event) => onChange(event.target.value)}/>{error && <span id={errorId} className="error-message" role="alert">{error}</span>}</label>
 }
