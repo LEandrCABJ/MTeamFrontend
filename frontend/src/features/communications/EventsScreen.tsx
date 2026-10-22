@@ -6,6 +6,7 @@ import { ErrorState, EmptyState, LoadingState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { PageHeader } from '../workspace/PageHeader'
 import { SafeImage } from '../workspace/SafeImage'
+import { EventConsultationScreen } from './EventConsultationScreen'
 import './communications.css'
 
 const EMPTY_FORM = { title: '', description: '', startsAt: '', location: '', imageUrl: '' }
@@ -21,6 +22,10 @@ function eventStatusLabel(event: Event) {
 }
 
 export function EventsScreen({ isAdmin = false }: { isAdmin?: boolean }) {
+  return isAdmin ? <AdminEventsScreen isAdmin/> : <EventConsultationScreen/>
+}
+
+function AdminEventsScreen({ isAdmin }: { isAdmin: boolean }) {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<EventStatus | ''>('')
   const [editing, setEditing] = useState<Event | null>(null)

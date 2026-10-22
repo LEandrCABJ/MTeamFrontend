@@ -72,9 +72,8 @@ test('el socio abre Eventos y consulta un evento publicado', async ({ page }) =>
 
   const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Jornada M-Team' }) })
   await expect(card).toBeVisible()
-  await expect(card).toContainText('Encuentro recreativo para socios y entrenadores.')
   await expect(card).toContainText('Sede central')
   await expect(card.getByRole('img', { name: 'Imagen del evento Jornada M-Team' })).toBeVisible()
   expect(eventsQuery?.get('page')).toBe('1')
-  expect(eventsQuery?.get('limit')).toBe('12')
+  expect(eventsQuery?.get('limit')).toBe('100')
 })
