@@ -73,7 +73,7 @@ export function ContactDataCard({ profile, role, onUpdated, onCancel }: { profil
       {error && <p className="error-message" role="alert">{error}</p>}
       <div className="profile-form-actions">
         <button type="button" className="button button-secondary" onClick={cancel}>Cancelar</button>
-        <button className="button button-primary" disabled={isSaving}>{isSaving ? 'Guardando…' : 'Guardar cambios'}</button>
+        <button type="submit" className="button button-primary" disabled={isSaving}>{isSaving ? 'Guardando…' : 'Guardar cambios'}</button>
       </div>
       {role === 'MEMBER' && <Link className="button button-secondary profile-mobile-medical-button" to="/socio/apto-medico"><Icon name="file" size={18}/>Apto médico</Link>}
     </form>
