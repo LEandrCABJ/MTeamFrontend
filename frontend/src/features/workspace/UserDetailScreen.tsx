@@ -12,6 +12,7 @@ import { MedicalCertificateFileButton } from './MedicalCertificateFileButton'
 import { PageHeader } from './PageHeader'
 import { SafeImage } from './SafeImage'
 import { StatusCard } from './StatusCard'
+import { UserLastAccessCard } from './UserLastAccessCard'
 
 const ROLE_LABEL = {
   MEMBER: 'Socio',
@@ -92,10 +93,9 @@ export function UserDetailScreen({ id }: { id: string }) {
     {actionError && <p className="error-message" role="alert">{actionError}</p>}
     <div className="user-detail-mobile-summary">
       <IdentityCard user={data}/>
-      <StatusSummary user={data}/>
       <MobileActions user={data} onEdit={() => setEditorOpen(true)} onToggle={() => void toggleStatus()}/>
     </div>
-    <div className="user-detail-status-desktop"><StatusSummary user={data}/></div>
+    <div className="user-detail-summary"><StatusSummary user={data}/></div>
     <div className="user-detail-grid">
       <main className="user-detail-main">
         <PaymentsCard payments={data.payments}/>
@@ -133,7 +133,7 @@ function StatusSummary({ user }: { user: AdminUserDetail }) {
     <StatusCard label="Estado de cuenta" value={membershipValue} tone={membershipTone} sub={user.membership ? `Vence el ${formatDate(user.membership.expiresAt)}` : 'Sin cuota acreditada'}/>
     <StatusCard label="Apto médico" value={medicalValue} tone={medicalTone} sub={latestCertificate ? `Revisado el ${formatDate(latestCertificate.reviewedAt ?? latestCertificate.uploadedAt)}` : 'No disponible'}/>
     <StatusCard label="Pagos acreditados" value={`${accreditedPayments.length} pagos`} tone="black" sub={accreditedPayments[0] ? `Último: ${formatDate(accreditedPayments[0].accreditedAt)}` : 'Sin pagos acreditados'}/>
-    <StatusCard label="Último acceso" value="No disponible" tone="black" sub="Dato no disponible en la API"/>
+    {(user.role === 'MEMBER' || user.role === 'TRAINER') && <UserLastAccessCard userId={user.id}/>}
   </div>
 }
 

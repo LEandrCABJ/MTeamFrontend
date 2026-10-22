@@ -1,4 +1,13 @@
 .user-avatar { overflow: hidden; border-radius: 50%; }
+.user-detail-summary .user-detail-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.user-last-access-card { min-width: 0; }
+.user-last-access-card .status-card-value { white-space: nowrap; }
+.user-last-access-card .status-card-sub { overflow-wrap: anywhere; }
+.user-last-access-card button { width: fit-content; margin-top: 0; min-height: 32px; }
+@media (max-width: 700px) {
+  .user-detail-summary .user-detail-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .user-last-access-card button { min-height: 44px; }
+}
 .user-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .profile-identity-avatar .user-avatar { width: 100%; height: 100%; font: inherit; background: inherit; color: inherit; }
 
