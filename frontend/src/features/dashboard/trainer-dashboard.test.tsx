@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { renderWithSession, requestsTo, setMobileViewport, stubApi, testUser } from '../../test/test-utils'
@@ -38,6 +38,8 @@ it('mobile keeps two metrics, a QR action and compact classes without extra navi
   expect(screen.queryByText('CLASES DE LA SEMANA')).not.toBeInTheDocument()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Nuestras sedes' })).toBeInTheDocument()
+  const more = screen.getByRole('heading', { name: /secciones/ }).closest('section')!
+  expect(within(more).getByRole('link', { name: 'Novedades' })).toHaveAttribute('href', '/entrenador/novedades')
 })
 it('isolates failures and allows retrying a failed query', async () => {
   let hasFailed = true

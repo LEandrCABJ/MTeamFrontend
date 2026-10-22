@@ -8,7 +8,7 @@ import { ErrorState, LoadingState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { SafeImage } from '../workspace/SafeImage'
 import { StatusCard } from '../workspace/StatusCard'
-import { DashboardHeader } from './DashboardParts'
+import { DashboardHeader, QuickActions } from './DashboardParts'
 import { describeAccess, describeFee, describeMedical, describeMembership, readSource } from './member-situation'
 import './dashboard.css'
 
@@ -42,6 +42,10 @@ export function MemberDashboardScreen() {
       <Link className="button button-secondary" to="/socio/clases"><Icon name="calendar" size={20}/>Ver mis clases</Link>
       <Link className="button button-secondary" to="/socio/apto-medico"><Icon name="file" size={20}/>Mi apto médico</Link>
     </div>
+    {isMobile && <QuickActions title="Más secciones" actions={[
+      { label: 'Eventos', icon: 'trophy', to: '/socio/eventos' },
+      { label: 'Novedades', icon: 'megaphone', to: '/socio/novedades' },
+    ]}/>}
     {membership.state === 'error' && <p className="error-message" role="alert"><span>No pudimos obtener tu cuota. {membership.message}</span> <button type="button" className="text-link" onClick={() => void membershipResource.reload()}>Reintentar</button></p>}
     {medical.state === 'error' && <p className="error-message" role="alert"><span>No pudimos obtener tu apto médico. {medical.message}</span> <button type="button" className="text-link" onClick={() => void medicalResource.reload()}>Reintentar</button></p>}
     {rejected && <p className="error-message" role="status"><span>Tu apto médico fue rechazado{rejected.reviewComment ? `. Observación: “${rejected.reviewComment}”` : '.'}</span> <Link className="text-link" to="/socio/apto-medico">Ver apto médico</Link></p>}

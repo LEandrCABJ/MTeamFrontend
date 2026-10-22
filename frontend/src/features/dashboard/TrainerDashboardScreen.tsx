@@ -8,7 +8,7 @@ import { useAuth } from '../authentication/use-auth'
 import { EmptyState, ErrorState, LoadingState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { SafeImage } from '../workspace/SafeImage'
-import { DashboardHeader, StatusCard } from './DashboardParts'
+import { DashboardHeader, QuickActions, StatusCard } from './DashboardParts'
 import './dashboard.css'
 
 export function TrainerDashboardScreen() {
@@ -35,6 +35,9 @@ export function TrainerDashboardScreen() {
       {!isMobile && <div><StatusCard label="NOTIFICACIONES" value={notifications.loading ? 'Cargando…' : notifications.error ? 'No disponible' : `${notifications.data?.unreadCount ?? notifications.data?.total ?? 0} sin leer`} tone="purple" sub="Consultar notificaciones" to="/entrenador/notificaciones"/>{notifications.error && <ErrorState message={notifications.error} retry={() => void notifications.reload()}/>}</div>}
     </div>
     <div className="trainer-actions"><Link className="button button-primary" to="/entrenador/acceso"><Icon name="qr"/>Abrir escáner QR</Link>{!isMobile && <Link className="button button-secondary" to="/entrenador/clases"><Icon name="calendar"/>Ver mis clases</Link>}</div>
+    {isMobile && <QuickActions title="Más secciones" actions={[
+      { label: 'Novedades', icon: 'megaphone', to: '/entrenador/novedades' },
+    ]}/>}
     <div className="trainer-content-grid">
       <section className="trainer-section" aria-labelledby="trainer-classes-title">
         <header className="trainer-section-heading"><h2 id="trainer-classes-title">Tus clases de hoy</h2><Link className="text-link" to="/entrenador/clases">Ver todas →</Link></header>

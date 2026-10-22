@@ -240,6 +240,20 @@ describe('inicio de socio y entrenador', () => {
     expect(screen.getByText('Aprobado')).toBeInTheDocument()
   })
 
+  it('en celular el socio tiene acceso a Eventos y Novedades desde Inicio', async () => {
+    setMobileViewport(true)
+    stubApi([
+      { path: '/members/me/membership', handler: () => ({ body: { currentPrice: null, lastPaymentAt: null, expiresAt: null, daysRemaining: 0, status: 'EXPIRED' } }) },
+      { path: '/members/me/medical-certificates', handler: () => ({ body: { items: [], page: 1, limit: 20, total: 0, initialMedicalCertificatePeriod: { startsAt: null, expiresAt: null, daysRemaining: 0, isActive: false } } }) },
+      { path: '/branches', handler: () => ({ body: { items: [], page: 1, limit: 100, total: 0 } }) },
+    ])
+    renderWithSession(<MemberDashboardScreen/>, { user: testUser('MEMBER') })
+
+    const more = screen.getByRole('heading', { name: /secciones/ }).closest('section')!
+    expect(within(more).getByRole('link', { name: 'Eventos' })).toHaveAttribute('href', '/socio/eventos')
+    expect(within(more).getByRole('link', { name: 'Novedades' })).toHaveAttribute('href', '/socio/novedades')
+  })
+
   it('el entrenador ve la cantidad real de clases asignadas', async () => {
     stubApi([{ path: '/trainer/classes', handler: () => ({ body: { ...schedule, classes: schedule.classes.filter((item) => item.trainer.id === 'trainer-id') } }) }])
     renderWithSession(<TrainerDashboardScreen/>, { user: testUser('TRAINER', { id: 'trainer-id' }) })

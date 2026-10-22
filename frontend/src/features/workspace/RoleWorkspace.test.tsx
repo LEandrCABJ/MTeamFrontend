@@ -59,13 +59,22 @@ describe('shell autenticado', () => {
     expect(document.querySelector('.breadcrumbs')).toBeNull()
   })
 
-  it('la barra inferior mobile tiene cinco pestañas por rol', () => {
+  it('la barra inferior mobile da acceso al perfil del administrador', () => {
     setMobileViewport(true)
     renderWorkspace('/admin/eventos', 'ADMIN')
     const tabbar = screen.getByRole('navigation', { name: 'Navegación inferior' })
-    expect(within(tabbar).getAllByRole('link').map((link) => link.textContent)).toEqual(['Panel', 'Usuarios', 'Pagos', 'Aptos', 'Clases'])
+    expect(within(tabbar).getAllByRole('link').map((link) => link.textContent)).toEqual(['Panel', 'Usuarios', 'Pagos', 'Aptos', 'Clases', 'Perfil'])
     expect(document.querySelector('.app-topbar-title')).toHaveTextContent('Eventos')
     expect(document.querySelector('.app-topbar')!.querySelectorAll('button, a')).toHaveLength(0)
+  })
+
+  it('el administrador puede cerrar sesión desde su perfil en celular', async () => {
+    setMobileViewport(true)
+    renderWorkspace('/admin', 'ADMIN')
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navegación inferior' })).getByRole('link', { name: 'Perfil' }))
+    expect(document.querySelector('.app-topbar-title')).toHaveTextContent('Mi perfil')
+    fireEvent.click(within(document.querySelector('.profile-page') as HTMLElement).getByRole('button', { name: 'Cerrar sesión' }))
+    expect(await screen.findByText('Pantalla de ingreso')).toBeInTheDocument()
   })
 
   it('muestra volver al panel desde sedes en celular', () => {
