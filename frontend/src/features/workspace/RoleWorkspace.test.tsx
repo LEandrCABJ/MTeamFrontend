@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AUTH_FORBIDDEN_EVENT } from '../../service/api-client'
 import { renderWithSession, setMobileViewport, stubApi, testUser } from '../../test/test-utils'
 import { RoleWorkspace } from './RoleWorkspace'
 
@@ -81,6 +82,31 @@ describe('shell autenticado', () => {
     setMobileViewport(true)
     renderWorkspace('/admin/sedes', 'ADMIN')
     expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/admin')
+  })
+
+  it('abre preguntas frecuentes dentro del rol y marca ayuda como sección activa', () => {
+    renderWorkspace('/socio/preguntas-frecuentes', 'MEMBER')
+    expect(screen.getAllByRole('heading', { name: 'Preguntas frecuentes' }).length).toBeGreaterThan(0)
+    const topbar = within(document.querySelector('.app-topbar') as HTMLElement)
+    const helpLink = topbar.getByRole('link', { name: 'Preguntas frecuentes' })
+    expect(helpLink).toHaveAttribute('href', '/socio/preguntas-frecuentes')
+    expect(helpLink).toHaveAttribute('aria-current', 'page')
+    expect(topbar.getByRole('link', { name: 'Notificaciones' })).toHaveAttribute('href', '/socio/notificaciones')
+  })
+
+  it('muestra y permite descartar el aviso de operación prohibida', () => {
+    renderWorkspace('/socio', 'MEMBER')
+    fireEvent(window, new Event(AUTH_FORBIDDEN_EVENT))
+    const permissionAlert = screen.getByText(/No tenés permisos suficientes/).closest('[role="alert"]') as HTMLElement
+    expect(permissionAlert).toBeInTheDocument()
+    fireEvent.click(within(permissionAlert).getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByText(/No tenés permisos suficientes/)).not.toBeInTheDocument()
+  })
+
+  it('redirige rutas desconocidas al panel correspondiente al rol', async () => {
+    renderWorkspace('/admin/seccion-inexistente', 'ADMIN')
+    expect(await screen.findByRole('heading', { name: 'Panel' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: 'Panel' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('el panel admin mobile muestra la topbar "Panel" sin botón de cerrar sesión', async () => {

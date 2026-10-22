@@ -4,6 +4,21 @@ import { backendApi } from './backend-api'
 describe('contrato de certificados médicos', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it.each([
+    ['respuesta nula', null],
+    ['lista de certificados inválida', { items: 'not-an-array', initialMedicalCertificatePeriod: {} }],
+    ['período inicial ausente', { items: [], page: 1, limit: 20, total: 0 }],
+  ])('rechaza %s en la respuesta del endpoint propio', async (_scenario, body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+
+    await expect(backendApi.getOwnMedicalCertificates()).rejects.toThrow(
+      'El servidor devolvió una respuesta incompleta. Intentá nuevamente.',
+    )
+  })
+
   it('usa los seis endpoints reales y los métodos correctos', async () => {
     const requests: Array<{ path: string; method: string; body: BodyInit | undefined }> = []
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
