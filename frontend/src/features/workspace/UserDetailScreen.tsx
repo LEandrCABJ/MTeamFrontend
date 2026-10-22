@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useApiResource } from '../../hooks/use-api-resource'
 import {
@@ -12,6 +12,7 @@ import { MedicalCertificateFileButton } from './MedicalCertificateFileButton'
 import { PageHeader } from './PageHeader'
 import { SafeImage } from './SafeImage'
 import { StatusCard } from './StatusCard'
+import { AdminMemberDetail } from './AdminMemberDetail'
 
 const ROLE_LABEL = {
   MEMBER: 'Socio',
@@ -39,10 +40,11 @@ const ACTION_LABEL: Record<string, string> = {
   PASSWORD_RESET: 'Contraseña restablecida',
 }
 
-export function UserDetailScreen({ id }: { id: string }) {
+export function UserDetailScreen({ id, onMemberLoaded }: { id: string; onMemberLoaded?: (user: AdminUserDetail | null) => void }) {
   const location = useLocation()
   const loader = useCallback(() => backendApi.getUser(id), [id])
   const { data, loading, error, reload, setData } = useApiResource(loader)
+  useEffect(() => { onMemberLoaded?.(data?.role === 'MEMBER' ? data : null) }, [data, onMemberLoaded])
   const [editorOpen, setEditorOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -85,6 +87,12 @@ export function UserDetailScreen({ id }: { id: string }) {
   if (error || !data) return <div className="app-page user-detail-screen">{header}<Link className="user-detail-back" to={backHref}><Icon name="back" size={18}/>Volver a usuarios</Link><section className="surface-card"><ErrorState message={error || 'No se encontró el usuario.'} retry={() => void reload()}/></section></div>
 
   const latestCertificate = data.medicalCertificates[0]
+  if (data.role === 'MEMBER') return <AdminMemberDetail key={data.id} user={data} backHref={backHref} onEdit={() => setEditorOpen(true)} onPassword={() => setPasswordOpen(true)} onStatus={() => void toggleStatus()} payments={<PaymentsCard payments={data.payments} isMember/>} audit={<AuditHistory userId={data.id}/>} medical={<MedicalCard certificates={latestCertificate ? [latestCertificate] : []}/>}>
+    {actionMessage && <p className="success-message" role="status">{actionMessage}</p>}
+    {actionError && <p className="error-message" role="alert">{actionError}</p>}
+    {editorOpen && <UserEditorDialog user={data} onClose={() => setEditorOpen(false)} onUpdated={(updated) => handleUpdated(updated, 'Datos actualizados correctamente.')}/>}
+    {passwordOpen && <PasswordDialog userId={data.id} onClose={() => { setPasswordOpen(false); void reload() }} onSaved={() => { setActionMessage('Contraseña temporal generada. El usuario deberá cambiarla al ingresar.'); setActionError('') }}/>}
+  </AdminMemberDetail>
   return <div className="app-page user-detail-screen">
     {header}
     <Link className="user-detail-back" to={backHref}><Icon name="back" size={18}/>Volver a usuarios</Link>
@@ -149,8 +157,8 @@ function PersonalCard({ user }: { user: AdminUserDetail }) {
   return <section className="surface-card user-detail-card" aria-labelledby="personal-data-title"><div className="user-detail-card-heading"><h2 id="personal-data-title">Datos personales</h2><Icon name="user" size={20}/></div><dl className="user-detail-list"><InfoRow label="Documento" value={user.documentNumber}/><InfoRow label="Fecha de nacimiento" value={formatDate(user.birthDate)}/><InfoRow label="Correo" value={user.email}/><InfoRow label="Teléfono" value={user.phone}/>{user.memberProfile && <><InfoRow label="Contacto de emergencia" value={user.memberProfile.emergencyContactName || 'Sin registrar'}/><InfoRow label="Teléfono de emergencia" value={user.memberProfile.emergencyContactPhone || 'Sin registrar'}/></>}</dl></section>
 }
 
-function PaymentsCard({ payments }: { payments: AdminUserDetail['payments'] }) {
-  return <section className="surface-card user-detail-card user-detail-list-card" aria-labelledby="payments-title"><div className="user-detail-card-heading"><h2 id="payments-title">Historial de pagos</h2></div>{payments.length ? <div className="user-detail-payment-list">{payments.slice(0, 8).map((payment) => <div className="user-detail-payment-row" key={payment.id}><span className="user-detail-payment-icon"><Icon name="wallet" size={17}/></span><div><strong>{formatDateTime(payment.accreditedAt)}</strong><small>{payment.method}{payment.receiptNumber ? ` · Comprobante ${payment.receiptNumber}` : ''}</small></div><strong>{money(payment.amount)}</strong><span className={`badge ${payment.status === 'VOIDED' ? 'badge-disabled' : 'badge-info'}`}>{payment.status === 'VOIDED' ? 'Anulado' : 'Acreditado'}</span></div>)}</div> : <EmptyState message="No hay pagos registrados."/>}</section>
+function PaymentsCard({ payments, isMember = false }: { payments: AdminUserDetail['payments']; isMember?: boolean }) {
+  return <section className="surface-card user-detail-card user-detail-list-card" aria-labelledby="payments-title"><div className="user-detail-card-heading"><h2 id="payments-title">Historial de pagos</h2></div>{payments.length ? <div className="user-detail-payment-list">{payments.slice(0, 8).map((payment) => <div className="user-detail-payment-row" key={payment.id}><span className="user-detail-payment-icon"><Icon name="wallet" size={17}/></span><div><strong>{formatDateTime(payment.accreditedAt)}</strong><small>{payment.method}{payment.receiptNumber ? ` · Comprobante ${payment.receiptNumber}` : ''}</small>{isMember && <small className="member-payment-extra">{payment.status === 'VOIDED' ? payment.voidReason ? `Anulado: ${payment.voidReason}` : 'Pago anulado' : `Vence el ${formatDate(payment.expiresAt)}`}</small>}</div><strong>{money(payment.amount)}</strong><span className={`badge ${payment.status === 'VOIDED' ? 'badge-disabled' : 'badge-info'}`}>{payment.status === 'VOIDED' ? 'Anulado' : 'Acreditado'}</span></div>)}</div> : <EmptyState message="No hay pagos registrados."/>}</section>
 }
 
 function MedicalCard({ certificates }: { certificates: AdminUserDetail['medicalCertificates'] }) {
