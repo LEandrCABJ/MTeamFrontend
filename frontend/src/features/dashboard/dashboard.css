@@ -63,6 +63,7 @@
 .dashboard-inline-link { display: inline-flex; align-items: center; gap: 8px; color: var(--pink); font-size: 14px; font-weight: 600; }
 .more-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .more-sections .button { min-height: 38px; padding: 0 10px; justify-content: center; font-size: 12px; }
+.admin-mobile-logout { width: 100%; min-height: 38px; justify-content: center; gap: 7px; margin-top: 10px; }
 .initial-period-summary, .schedule-status-summary { display: grid; gap: 10px; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
 .initial-period-summary strong { color: var(--black); font-size: 17px; }
 .initial-period-summary .text-link { font-size: 12px; }

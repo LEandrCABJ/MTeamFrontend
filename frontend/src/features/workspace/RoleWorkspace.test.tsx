@@ -60,21 +60,23 @@ describe('shell autenticado', () => {
     expect(document.querySelector('.breadcrumbs')).toBeNull()
   })
 
-  it('la barra inferior mobile da acceso al perfil del administrador', () => {
+  it('la barra inferior mobile del administrador reserva espacio para sus secciones principales', () => {
     setMobileViewport(true)
     renderWorkspace('/admin/eventos', 'ADMIN')
     const tabbar = screen.getByRole('navigation', { name: 'Navegación inferior' })
-    expect(within(tabbar).getAllByRole('link').map((link) => link.textContent)).toEqual(['Panel', 'Usuarios', 'Pagos', 'Aptos', 'Clases', 'Perfil'])
+    expect(within(tabbar).getAllByRole('link').map((link) => link.textContent)).toEqual(['Panel', 'Usuarios', 'Pagos', 'Aptos', 'Clases'])
+    expect(within(tabbar).queryByRole('link', { name: 'Perfil' })).not.toBeInTheDocument()
     expect(document.querySelector('.app-topbar-title')).toHaveTextContent('Eventos')
     expect(document.querySelector('.app-topbar')!.querySelectorAll('button, a')).toHaveLength(0)
   })
 
-  it('el administrador puede cerrar sesión desde su perfil en celular', async () => {
+  it('el administrador puede cerrar sesión desde el panel en celular', async () => {
     setMobileViewport(true)
     renderWorkspace('/admin', 'ADMIN')
-    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navegación inferior' })).getByRole('link', { name: 'Perfil' }))
-    expect(document.querySelector('.app-topbar-title')).toHaveTextContent('Mi perfil')
-    fireEvent.click(within(document.querySelector('.profile-page') as HTMLElement).getByRole('button', { name: 'Cerrar sesión' }))
+    const dashboard = document.querySelector('.dashboard-screen') as HTMLElement
+    const logoutButton = within(dashboard).getByRole('button', { name: 'Cerrar sesión' })
+    expect(logoutButton).toHaveClass('admin-mobile-logout', 'button-primary')
+    fireEvent.click(logoutButton)
     expect(await screen.findByText('Pantalla de ingreso')).toBeInTheDocument()
   })
 
@@ -109,7 +111,7 @@ describe('shell autenticado', () => {
     expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: 'Panel' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('el panel admin mobile muestra la topbar "Panel" sin botón de cerrar sesión', async () => {
+  it('el panel admin mobile muestra el botón de cerrar sesión en Más secciones y no en la topbar', async () => {
     setMobileViewport(true)
     stubApi([
       { path: '/users', handler: () => ({ body: { items: [], page: 1, limit: 1, total: 3 } }) },
@@ -121,6 +123,8 @@ describe('shell autenticado', () => {
     expect(topbar.querySelectorAll('button, a')).toHaveLength(0)
     expect(within(screen.getByRole('navigation', { name: 'Navegación inferior' })).getByRole('link', { name: 'Panel' })).toHaveAttribute('aria-current', 'page')
     expect(await screen.findByRole('heading', { name: 'Últimos accesos' })).toBeInTheDocument()
+    const moreSections = screen.getByRole('heading', { name: 'Más secciones' }).closest('section') as HTMLElement
+    expect(within(moreSections).getByRole('button', { name: 'Cerrar sesión' })).toHaveClass('admin-mobile-logout')
   })
 
   it('socio y entrenador usan el orden de la navegación lateral en las pestañas mobile', () => {

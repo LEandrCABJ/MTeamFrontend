@@ -61,14 +61,7 @@ export const NAVIGATION: Record<UserRole, NavEntry[]> = {
 const MOBILE_TABS: Record<UserRole, string[]> = {
   MEMBER: ['', 'perfil', 'apto-medico', 'acceso', 'clases'],
   TRAINER: ['', 'perfil', 'clases', 'acceso', 'eventos'],
-  ADMIN: ['', 'usuarios', 'pagos', 'aptos', 'clases', 'perfil'],
-}
-
-const ADMIN_PROFILE_TAB: NavEntry = {
-  label: 'Mi perfil',
-  tabLabel: 'Perfil',
-  href: 'perfil',
-  icon: 'user',
+  ADMIN: ['', 'usuarios', 'pagos', 'aptos', 'clases'],
 }
 
 // Real features that Figma reaches from another screen instead of a sidebar entry.
@@ -84,9 +77,7 @@ const NESTED_SEGMENTS: Record<UserRole, Record<string, { parent: string; title: 
 }
 
 export function mobileTabs(role: UserRole): NavEntry[] {
-  return MOBILE_TABS[role].map((href) => role === 'ADMIN' && href === 'perfil'
-    ? ADMIN_PROFILE_TAB
-    : NAVIGATION[role].find((entry) => entry.href === href)!)
+  return MOBILE_TABS[role].map((href) => NAVIGATION[role].find((entry) => entry.href === href)!)
 }
 
 export function resolveSection(role: UserRole, segment: string): { active: NavEntry; title: string } {

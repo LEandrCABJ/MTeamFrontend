@@ -78,7 +78,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
 
   function renderScreen() {
     if (!segment) {
-      if (role === 'ADMIN') return <AdminDashboardScreen/>
+      if (role === 'ADMIN') return <AdminDashboardScreen onLogout={() => void handleLogout()}/>
       if (role === 'TRAINER') return <TrainerDashboardScreen/>
       return <MemberDashboardScreen/>
     }
