@@ -47,7 +47,7 @@ export function AdminMemberDetail({ user, backHref, onEdit, onPassword, onStatus
       <Link className="button button-primary member-detail-pay" to="/admin/pagos"><Icon name="plus" size={18}/>Registrar pago</Link>
       <button type="button" className="button button-secondary member-detail-reset" onClick={onPassword}><Icon name="lock" size={18}/>Restablecer contraseña</button>
       <button type="button" aria-label="Editar datos" className="button button-secondary member-detail-edit" onClick={onEdit}><Icon name="edit" size={18}/><span className="member-desktop-label">Editar datos</span><span className="member-mobile-label">Editar</span></button>
-      <button type="button" className="button button-danger member-detail-state" onClick={onStatus}><Icon name={isActive ? 'close' : 'check'} size={18}/>{isActive ? 'Desactivar' : 'Reactivar'}<span className="member-desktop-label"> cuenta</span></button>
+      <button type="button" aria-label={isActive ? 'Desactivar cuenta' : 'Reactivar cuenta'} className="button button-danger member-detail-state" onClick={onStatus}><Icon name={isActive ? 'close' : 'check'} size={18}/>{isActive ? 'Desactivar' : 'Reactivar'}<span className="member-desktop-label"> cuenta</span></button>
     </div>
     <div className="member-detail-content">
       <main className="member-detail-main">{payments}{audit}</main>
