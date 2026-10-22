@@ -6,11 +6,16 @@ import { EmptyState, ErrorState, LoadingState } from '../workspace/ApiStates'
 import { Icon } from '../workspace/Icon'
 import { PageHeader } from '../workspace/PageHeader'
 import { SafeImage } from '../workspace/SafeImage'
+import { NewsConsultationScreen } from './NewsConsultationScreen'
 import './communications.css'
 
 const EMPTY_FORM = { title: '', content: '', imageUrl: '', audience: 'ALL' as PublicationAudience }
 
 export function NewsScreen({ isAdmin = false }: { isAdmin?: boolean }) {
+  return isAdmin ? <AdminNewsScreen isAdmin/> : <NewsConsultationScreen/>
+}
+
+function AdminNewsScreen({ isAdmin }: { isAdmin: boolean }) {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<PublicationStatus | ''>('')
   const [editing, setEditing] = useState<NewsPost | null>(null)

@@ -34,7 +34,7 @@ describe('communications screens', () => {
 
   it('shows the audience and publication state of a news post', async () => {
     stubApi([{ path: '/news-posts', handler: () => ({ body: { items: [news], page: 1, limit: 12, total: 1 } }) }])
-    renderWithSession(<NewsScreen/>, { user: testUser('MEMBER') })
+    renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
     expect(await screen.findByText('Feriado')).toBeInTheDocument()
     expect(screen.getByText('Socios')).toBeInTheDocument()
     expect(screen.getByText('Publicada')).toBeInTheDocument()
