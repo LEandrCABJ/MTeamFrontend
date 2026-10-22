@@ -30,10 +30,13 @@ describe('NewsScreen', () => {
     renderWithSession(<NewsScreen/>, { user: testUser('MEMBER') })
 
     expect(await screen.findByRole('heading', { name: 'Horario de feriado' })).toBeInTheDocument()
-    expect(screen.getByText('Socios')).toBeInTheDocument()
+    expect(screen.getByText(post().content)).toBeInTheDocument()
+    expect(screen.queryByText('Socios')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Nueva novedad/ })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Estado')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument()
   })
 
   it('muestra vacío y permite reintentar cuando falla la carga', async () => {
