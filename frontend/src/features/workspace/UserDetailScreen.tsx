@@ -13,7 +13,7 @@ import { MedicalCertificateFileButton } from './MedicalCertificateFileButton'
 import { PageHeader } from './PageHeader'
 import { SafeImage } from './SafeImage'
 import { StatusCard } from './StatusCard'
-import { UserAccessSummary } from './UserAccessSummary'
+import { UserLastAccessCard } from './UserLastAccessCard'
 
 const ROLE_LABEL = {
   MEMBER: 'Socio',
@@ -84,13 +84,11 @@ export function UserDetailScreen({ id }: { id: string }) {
     {actionMessage && <p className="success-message" role="status">{actionMessage}</p>}
     <div className="user-detail-mobile-summary">
       <IdentityCard user={data}/>
-      <StatusSummary user={data}/>
       <MobileActions user={data} onEdit={() => openAction(setIsEditorOpen)} onToggle={() => openAction(setIsStatusOpen)} onPassword={() => openAction(setIsPasswordOpen)}/>
     </div>
-    <div className="user-detail-status-desktop"><StatusSummary user={data}/></div>
+    <div className="user-detail-summary"><StatusSummary user={data}/></div>
     <div className="user-detail-grid">
       <main className="user-detail-main">
-        <UserAccessSummary key={data.id} userId={data.id}/>
         {data.role === 'MEMBER' && <PaymentsCard payments={data.payments}/>}
         <AuditHistory key={`${data.id}-${auditVersion}`} userId={data.id}/>
       </main>
@@ -117,7 +115,7 @@ function IdentityCard({ user }: { user: AdminUserDetail }) {
 }
 
 function StatusSummary({ user }: { user: AdminUserDetail }) {
-  if (user.role !== 'MEMBER') return <div className="status-grid user-detail-status-grid"><StatusCard label="Estado de cuenta" value={user.status === 'ACTIVE' ? 'Activa' : 'Desactivada'} tone={user.status === 'ACTIVE' ? 'blue' : 'pink'} sub={ROLE_LABEL[user.role]}/></div>
+  if (user.role !== 'MEMBER') return <div className="status-grid user-detail-status-grid"><StatusCard label="Estado de cuenta" value={user.status === 'ACTIVE' ? 'Activa' : 'Desactivada'} tone={user.status === 'ACTIVE' ? 'blue' : 'pink'} sub={ROLE_LABEL[user.role]}/>{user.role === 'TRAINER' && <UserLastAccessCard userId={user.id}/>}</div>
   const latestCertificate = user.medicalCertificates[0]
   const accreditedPayments = user.payments.filter((payment) => payment.status === 'ACCREDITED')
   const membershipValue = user.membership ? user.membership.status === 'ACTIVE' ? 'Al día' : 'Vencida' : user.status === 'ACTIVE' ? 'Activa' : 'Inactiva'
@@ -128,6 +126,7 @@ function StatusSummary({ user }: { user: AdminUserDetail }) {
     <StatusCard label="Estado de cuenta" value={membershipValue} tone={membershipTone} sub={user.membership ? `Vence el ${formatDate(user.membership.expiresAt)}` : 'Sin cuota acreditada'}/>
     <StatusCard label="Apto médico" value={medicalValue} tone={medicalTone} sub={latestCertificate ? `Revisado el ${formatDate(latestCertificate.reviewedAt ?? latestCertificate.uploadedAt)}` : 'No disponible'}/>
     <StatusCard label="Pagos acreditados" value={`${accreditedPayments.length} pagos`} tone="black" sub={accreditedPayments[0] ? `Último: ${formatDate(accreditedPayments[0].accreditedAt)}` : 'Sin pagos acreditados'}/>
+    <UserLastAccessCard userId={user.id}/>
   </div>
 }
 
