@@ -10,3 +10,18 @@
 .app-topbar-help.is-active { color: var(--pink); }
 .app-topbar-help + .app-topbar-bell { margin-left: 0; }
 .app-topbar-bell .app-nav-badge { position: absolute; top: 0; right: -2px; margin: 0; min-width: 18px; height: 18px; padding: 0 5px; font-size: 10px; }
+.admin-user-editor { min-width: 0; }
+.workspace-dialog:has(.admin-user-editor) { width: min(760px, 100%); }
+.admin-user-editor fieldset { min-width: 0; margin: 20px 0; padding: 16px; border: 1px solid #e5e6e8; border-radius: 12px; }
+.admin-user-editor legend { padding: 0 8px; font-weight: 600; }
+.admin-user-editor .read-field { min-width: 0; font-size: 14px; }
+.admin-user-editor input:not([type="checkbox"]), .admin-user-editor textarea { min-width: 0; width: 100%; min-height: 44px; box-sizing: border-box; font-size: 16px; }
+.admin-user-editor .trainer-branch-options .checkbox { min-height: 44px; }
+.admin-user-editor .dialog-actions { gap: 12px; flex-wrap: wrap; }
+.admin-user-editor .button { min-height: 44px; }
+@media (max-width: 700px) {
+  .user-detail-desktop-identity { display: none; }
+  .user-detail-screen .user-detail-desktop-actions { display: none; }
+  .admin-user-editor fieldset { padding: 12px; }
+  .admin-user-editor .dialog-actions .button { flex: 1; }
+}

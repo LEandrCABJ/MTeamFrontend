@@ -204,6 +204,11 @@ export interface CreateUserInput {
   description?: string
 }
 
+export type UpdateUserInput = Partial<Pick<CreateUserInput,
+  'firstName' | 'lastName' | 'documentNumber' | 'birthDate' | 'email' | 'phone' |
+  'emergencyContactName' | 'emergencyContactPhone' | 'specialty' | 'description'
+>> & { reason?: string }
+
 export interface UserAuditLog {
   id: string
   userId: string
@@ -398,7 +403,7 @@ export const backendApi = {
   getUser: (id: string) => apiRequest<AdminUserDetail>(`/users/${id}`),
   createUser: (body: CreateUserInput) =>
     apiRequest<AdminUserDetail>('/users', { method: 'POST', body }),
-  updateUser: (id: string, body: Record<string, unknown>) =>
+  updateUser: (id: string, body: UpdateUserInput) =>
     apiRequest<AdminUserDetail>(`/users/${id}`, { method: 'PATCH', body }),
   updateUserStatus: (id: string, status: UserStatus, reason?: string) =>
     apiRequest<UserListItem>(`/users/${id}/status`, {
