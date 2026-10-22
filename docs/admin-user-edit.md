@@ -23,6 +23,14 @@ Verified against the available backend checkout `../M-Team` at `5acc4f9`:
 
 Role and status are context, never included in the personal-data payload. Administrators have no invented profile fields. Payments, membership and medical certificates remain consultation data in this form; assigned classes remain read-only. Existing navigation and route permissions are preserved.
 
+## Gym access details (ACC-06 / ACC-07)
+
+The previous "Último acceso" card was hardcoded to "No disponible". The user-detail endpoint does not embed access logs, but the existing administrator-only GET /access-attempts already supports userId, result, page and limit. Its repository queries actual AccessLog rows ordered by attemptedAt DESC, then id DESC, and includes branch and accessPoint names. No backend or OpenAPI change is needed.
+
+The detail now makes two independent requests with userId, page=1 and limit=1: one with result=ALLOWED for "Último ingreso permitido", and one without a result filter for "Último intento de acceso". It displays the real timestamp in Buenos Aires time, result, available location references and the translated rejection reason. A newer rejection cannot hide an earlier allowed entry. Each request has its own loading, empty, error and retry state. No updatedAt, login timestamp or browser-stored access data is used.
+
+The access-summary component is restricted to an authenticated ADMIN session; the existing admin route and backend authorization are preserved. The general access history and its filters are unchanged. The available backend is MTeamOrg/MTeamBackend at ../M-Team, clean on fix/profile-contact-validation; it was inspected without edits or branch changes because its API already covers this task.
+
 ## API limitations and pending scope
 
 - ENT-02 photography cannot be completed administratively: the API exposes only PUT /users/me/photo, authenticated as the photo owner. No administrative upload operation or photoUrl update exists. Existing photographs remain visible in the detail; no endpoint was invented.
@@ -35,4 +43,4 @@ Role and status are context, never included in the personal-data payload. Admini
 - Playwright: administrative trainer editing at 1440, 390 and 320 pixels, actual save interaction, horizontal overflow, console health and screenshots saved in the system temporary directory.
 - Project checks: ESLint, TypeScript project build, Vite production build and git diff --check.
 
-Final results: 28 component tests passed across the three related test files; 3 Playwright tests passed. ESLint, `tsc -b`, production build and `git diff --check` passed. Related Vitest tests were run with `--maxWorkers=1 --testTimeout=15000` after timeouts under concurrent Windows workloads. Vite retained its large-bundle warning (approximately 945 kB minified). Initial sandbox executions failed with `spawn EPERM`; the final test/build/browser runs succeeded with approved process permissions. Browser plugin was unavailable, so the project Playwright workflow used Edge at `http://127.0.0.1:4173` with fixture API responses.
+Final results: 43 component tests passed across six related test files (including access-summary and authorization tests); 3 Playwright tests passed. ESLint, `tsc -b`, production build and `git diff --check` passed. Related Vitest tests were run with `--maxWorkers=1 --testTimeout=15000` after timeouts under concurrent Windows workloads. Vite retained its large-bundle warning (approximately 947 kB minified). Initial sandbox executions failed with `spawn EPERM`; the final test/build/browser runs succeeded with approved process permissions. Browser plugin was unavailable, so the project Playwright workflow used Edge at `http://127.0.0.1:4173` with fixture API responses.

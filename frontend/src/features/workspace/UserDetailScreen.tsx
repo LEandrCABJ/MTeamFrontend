@@ -13,6 +13,7 @@ import { MedicalCertificateFileButton } from './MedicalCertificateFileButton'
 import { PageHeader } from './PageHeader'
 import { SafeImage } from './SafeImage'
 import { StatusCard } from './StatusCard'
+import { UserAccessSummary } from './UserAccessSummary'
 
 const ROLE_LABEL = {
   MEMBER: 'Socio',
@@ -89,6 +90,7 @@ export function UserDetailScreen({ id }: { id: string }) {
     <div className="user-detail-status-desktop"><StatusSummary user={data}/></div>
     <div className="user-detail-grid">
       <main className="user-detail-main">
+        <UserAccessSummary key={data.id} userId={data.id}/>
         {data.role === 'MEMBER' && <PaymentsCard payments={data.payments}/>}
         <AuditHistory key={`${data.id}-${auditVersion}`} userId={data.id}/>
       </main>
@@ -126,7 +128,6 @@ function StatusSummary({ user }: { user: AdminUserDetail }) {
     <StatusCard label="Estado de cuenta" value={membershipValue} tone={membershipTone} sub={user.membership ? `Vence el ${formatDate(user.membership.expiresAt)}` : 'Sin cuota acreditada'}/>
     <StatusCard label="Apto médico" value={medicalValue} tone={medicalTone} sub={latestCertificate ? `Revisado el ${formatDate(latestCertificate.reviewedAt ?? latestCertificate.uploadedAt)}` : 'No disponible'}/>
     <StatusCard label="Pagos acreditados" value={`${accreditedPayments.length} pagos`} tone="black" sub={accreditedPayments[0] ? `Último: ${formatDate(accreditedPayments[0].accreditedAt)}` : 'Sin pagos acreditados'}/>
-    <StatusCard label="Último acceso" value="No disponible" tone="black" sub="Dato no disponible en la API"/>
   </div>
 }
 

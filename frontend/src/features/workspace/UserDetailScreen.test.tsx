@@ -36,7 +36,7 @@ afterEach(() => {
 
 describe('UserDetailScreen password reset', () => {
   it('requests a server-generated temporary password and displays it once', async () => {
-    const fetchStub = stubApi([
+    const fetchStub = stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },
       { path: '/users/user-1', handler: () => ({ body: userDetail }) },
       { path: '/users/user-1/audit-logs', handler: () => ({ body: { items: [], page: 1, limit: 20, total: 0 } }) },
       { method: 'POST', path: '/users/user-1/password-resets', handler: () => ({ body: { temporaryPassword } }) },
@@ -56,7 +56,7 @@ describe('UserDetailScreen password reset', () => {
 })
 
 function setup(user: AdminUserDetail = userDetail, routes: ApiRoute[] = []) {
-  const fetchStub = stubApi([
+  const fetchStub = stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },
     ...routes,
     { path: '/users/user-1', handler: () => ({ body: user }) },
     { path: '/users/user-1/audit-logs', handler: () => ({ body: { items: [], total: 0 } }) },
