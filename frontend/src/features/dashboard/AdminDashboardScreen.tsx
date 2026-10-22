@@ -6,6 +6,7 @@ import { backendApi, type AccessAttempt, type WeeklySchedule } from '../../servi
 import { addDays, formatDateTime, gymDate, mondayOfGymWeek } from '../../service/date-time'
 import { useAuth } from '../authentication/use-auth'
 import { EmptyState, ErrorState, LoadingState } from '../workspace/ApiStates'
+import { Icon } from '../workspace/Icon'
 import { ActionButton, DashboardCard, DashboardHeader, QuickActions, StatusCard, type QuickAction, type StatusTone } from './DashboardParts'
 import { formatDayMonth, formatMoney, formatNumericDate, loadRevenueWeek, type RevenueWeek } from './dashboard-data'
 import { weekRangeLabel } from '../schedule/schedule-model'
@@ -38,7 +39,7 @@ function MetricCard({ label, tone, value, loading, error, to, unit, sub }: { lab
   return <StatusCard label={label} value={`${value} ${unit}`} tone={tone} sub={sub} to={to}/>
 }
 
-export function AdminDashboardScreen() {
+export function AdminDashboardScreen({ onLogout }: { onLogout?: () => void } = {}) {
   const { session } = useAuth()
   const isMobile = useIsMobile()
   const metrics = useApiResource(backendApi.getAdminDashboardMetrics)
@@ -70,7 +71,10 @@ export function AdminDashboardScreen() {
       <DashboardHeader greeting={greeting} intro={`Resumen de hoy · ${formatNumericDate(gymDate())}`}/>
       {statusSection}
       <QuickActions title="Acciones frecuentes" actions={actions}/>
-      <DashboardCard title="Más secciones"><div className="more-sections">{MORE_SECTIONS.map((action) => <ActionButton key={action.label} action={action}/>)}</div></DashboardCard>
+      <DashboardCard title="Más secciones">
+        <div className="more-sections">{MORE_SECTIONS.map((action) => <ActionButton key={action.label} action={action}/>)}</div>
+        {onLogout && <button type="button" className="button button-primary admin-mobile-logout" onClick={onLogout}><Icon name="logout" size={18}/>Cerrar sesión</button>}
+      </DashboardCard>
       <AccessAttemptsCard loading={access.loading} error={access.error} data={access.data?.items ?? []} retry={() => void access.reload()} isMobile/>
     </div>
   }
