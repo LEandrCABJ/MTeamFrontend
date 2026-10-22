@@ -13,6 +13,7 @@ import { MedicalCertificateFileButton } from './MedicalCertificateFileButton'
 import { PageHeader } from './PageHeader'
 import { SafeImage } from './SafeImage'
 import { StatusCard } from './StatusCard'
+import { AdminMemberDetail } from './AdminMemberDetail'
 import { UserLastAccessCard } from './UserLastAccessCard'
 
 const ROLE_LABEL = {
@@ -41,10 +42,11 @@ const ACTION_LABEL: Record<string, string> = {
   PASSWORD_RESET: 'Contraseña restablecida',
 }
 
-export function UserDetailScreen({ id }: { id: string }) {
+export function UserDetailScreen({ id, onMemberLoaded }: { id: string; onMemberLoaded?: (user: AdminUserDetail | null) => void }) {
   const location = useLocation()
   const loader = useCallback(() => backendApi.getUser(id), [id])
   const { data, loading, error, reload, setData } = useApiResource(loader)
+  useEffect(() => { onMemberLoaded?.(data?.role === 'MEMBER' ? data : null) }, [data, onMemberLoaded])
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isPasswordOpen, setIsPasswordOpen] = useState(false)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
@@ -78,6 +80,12 @@ export function UserDetailScreen({ id }: { id: string }) {
   if (error || !data) return <div className="app-page user-detail-screen">{header}<Link className="user-detail-back" to={backHref}><Icon name="back" size={18}/>Volver a usuarios</Link><section className="surface-card"><ErrorState message={error || 'No se encontró el usuario.'} retry={() => void reload()}/></section></div>
 
   const latestCertificate = data.medicalCertificates[0]
+  if (data.role === 'MEMBER') return <AdminMemberDetail key={data.id} user={data} backHref={backHref} onEdit={() => openAction(setIsEditorOpen)} onPassword={() => openAction(setIsPasswordOpen)} onStatus={() => openAction(setIsStatusOpen)} payments={<PaymentsCard payments={data.payments} isMember/>} audit={<AuditHistory key={`${data.id}-${auditVersion}`} userId={data.id}/>} medical={<MedicalCard certificates={latestCertificate ? [latestCertificate] : []}/>}>
+    {actionMessage && <p className="success-message" role="status">{actionMessage}</p>}
+    {isStatusOpen && <StatusDialog user={data} onClose={() => setIsStatusOpen(false)} onSaved={(updated) => { handleUpdated(updated, 'Estado de la cuenta actualizado.'); setIsStatusOpen(false) }}/>}
+    {isEditorOpen && <UserEditorDialog key={data.id} user={data} onBranchesUpdated={(updated) => { setData(updated); setAuditVersion((current) => current + 1) }} onClose={() => setIsEditorOpen(false)} onUpdated={(updated) => handleUpdated(updated, 'Datos actualizados correctamente.')}/>}
+    {isPasswordOpen && <PasswordDialog userId={data.id} onClose={() => { setIsPasswordOpen(false); void reload() }} onSaved={() => { setAuditVersion((current) => current + 1); setActionMessage('Contrase\u00f1a temporal generada. El usuario deber\u00e1 cambiarla al ingresar.') }}/>}
+  </AdminMemberDetail>
   return <div className="app-page user-detail-screen">
     {header}
     <Link className="user-detail-back" to={backHref}><Icon name="back" size={18}/>Volver a usuarios</Link>
@@ -89,13 +97,11 @@ export function UserDetailScreen({ id }: { id: string }) {
     <div className="user-detail-summary"><StatusSummary user={data}/></div>
     <div className="user-detail-grid">
       <main className="user-detail-main">
-        {data.role === 'MEMBER' && <PaymentsCard payments={data.payments}/>}
         <AuditHistory key={`${data.id}-${auditVersion}`} userId={data.id}/>
       </main>
       <aside className="user-detail-aside">
         <div className="user-detail-desktop-identity"><IdentityCard user={data}/></div>
         <PersonalCard user={data}/>
-        {data.role === 'MEMBER' && <MedicalCard certificates={latestCertificate ? [latestCertificate] : []}/>}
         {data.role === 'TRAINER' && <TrainerCard user={data}/>}
         {data.role === 'ADMIN' && <section className="surface-card user-detail-note"><h2>Información administrativa</h2><p>La cuenta tiene permisos de administrador según el rol informado por el backend.</p></section>}
       </aside>
@@ -143,8 +149,8 @@ function PersonalCard({ user }: { user: AdminUserDetail }) {
   return <section className="surface-card user-detail-card" aria-labelledby="personal-data-title"><div className="user-detail-card-heading"><h2 id="personal-data-title">Datos personales</h2><Icon name="user" size={20}/></div><dl className="user-detail-list"><InfoRow label="Documento" value={user.documentNumber}/><InfoRow label="Fecha de nacimiento" value={formatDate(user.birthDate)}/><InfoRow label="Correo" value={user.email}/><InfoRow label="Teléfono" value={user.phone}/>{user.memberProfile && <><InfoRow label="Contacto de emergencia" value={user.memberProfile.emergencyContactName || 'Sin registrar'}/><InfoRow label="Teléfono de emergencia" value={user.memberProfile.emergencyContactPhone || 'Sin registrar'}/></>}</dl></section>
 }
 
-function PaymentsCard({ payments }: { payments: AdminUserDetail['payments'] }) {
-  return <section className="surface-card user-detail-card user-detail-list-card" aria-labelledby="payments-title"><div className="user-detail-card-heading"><h2 id="payments-title">Historial de pagos</h2></div>{payments.length ? <div className="user-detail-payment-list">{payments.slice(0, 8).map((payment) => <div className="user-detail-payment-row" key={payment.id}><span className="user-detail-payment-icon"><Icon name="wallet" size={17}/></span><div><strong>{formatDateTime(payment.accreditedAt)}</strong><small>{payment.method}{payment.receiptNumber ? ` · Comprobante ${payment.receiptNumber}` : ''}</small></div><strong>{money(payment.amount)}</strong><span className={`badge ${payment.status === 'VOIDED' ? 'badge-disabled' : 'badge-info'}`}>{payment.status === 'VOIDED' ? 'Anulado' : 'Acreditado'}</span></div>)}</div> : <EmptyState message="No hay pagos registrados."/>}</section>
+function PaymentsCard({ payments, isMember = false }: { payments: AdminUserDetail['payments']; isMember?: boolean }) {
+  return <section className="surface-card user-detail-card user-detail-list-card" aria-labelledby="payments-title"><div className="user-detail-card-heading"><h2 id="payments-title">Historial de pagos</h2></div>{payments.length ? <div className="user-detail-payment-list">{payments.slice(0, 8).map((payment) => <div className="user-detail-payment-row" key={payment.id}><span className="user-detail-payment-icon"><Icon name="wallet" size={17}/></span><div><strong>{formatDateTime(payment.accreditedAt)}</strong><small>{payment.method}{payment.receiptNumber ? ` · Comprobante ${payment.receiptNumber}` : ''}</small>{isMember && <small className="member-payment-extra">{payment.status === 'VOIDED' ? payment.voidReason ? `Anulado: ${payment.voidReason}` : 'Pago anulado' : `Vence el ${formatDate(payment.expiresAt)}`}</small>}</div><strong>{money(payment.amount)}</strong><span className={`badge ${payment.status === 'VOIDED' ? 'badge-disabled' : 'badge-info'}`}>{payment.status === 'VOIDED' ? 'Anulado' : 'Acreditado'}</span></div>)}</div> : <EmptyState message="No hay pagos registrados."/>}</section>
 }
 
 function MedicalCard({ certificates }: { certificates: AdminUserDetail['medicalCertificates'] }) {

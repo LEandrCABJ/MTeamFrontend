@@ -14,9 +14,9 @@ it.each(['MEMBER', 'TRAINER'] as const)('places one compact card in the summary 
     { path: '/access-attempts', handler: () => ({ body: { items: [attempt] } }) },
   ])
   renderWithSession(<UserDetailScreen id="selected-user"/>, { user: testUser('ADMIN') })
-  expect(await screen.findByText('21/10 · 12:30')).toBeInTheDocument()
+  expect((await screen.findAllByText('21/10 · 12:30')).length).toBeGreaterThan(0)
   const card = screen.getByRole('article', { name: 'Último acceso' })
-  expect(card.closest('.user-detail-status-grid')).not.toBeNull()
+  expect(card.closest(role === 'MEMBER' ? '.member-detail-summary' : '.user-detail-status-grid')).not.toBeNull()
   expect(within(card).getByText('Centro · Molinete 1')).toBeInTheDocument()
   expect(screen.queryByText('Último intento de acceso')).not.toBeInTheDocument()
   const queries = requestsTo(fetchStub, 'GET', '/access-attempts')

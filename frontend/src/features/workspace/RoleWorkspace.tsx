@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AUTH_FORBIDDEN_EVENT } from '../../service/api-client'
+import type { AdminUserDetail } from '../../service/backend-api'
 import { useAuth } from '../authentication/use-auth'
 import type { UserRole } from '../authentication/auth-types'
 import { AdminDashboardScreen } from '../dashboard/AdminDashboardScreen'
@@ -37,6 +38,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [permissionNotice, setPermissionNotice] = useState('')
+  const [memberDetail, setMemberDetail] = useState<AdminUserDetail | null>(null)
   const base = ROLE_BASE[role]
   const pathSegments = location.pathname.replace(base, '').split('/').filter(Boolean)
   const segment = pathSegments[0] ?? ''
@@ -67,7 +69,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
       active={active}
       title={screenTitle}
       mobileBackHref={role !== 'ADMIN' && segment === 'eventos' ? base : isAdminUserDetail ? `/admin/usuarios${location.search}` : role === 'ADMIN' && segment === 'aptos' && nestedId ? '/admin/aptos' : role === 'ADMIN' && ['sedes', 'novedades'].includes(segment) ? '/admin' : undefined}
-      mobileTitle={isAdminUserDetail ? 'Detalle de usuario' : role === 'ADMIN' && segment === 'aptos' && nestedId ? 'Revisar apto' : undefined}
+      mobileTitle={isAdminUserDetail ? memberDetail?.id === nestedId ? `${memberDetail.firstName} ${memberDetail.lastName}` : 'Detalle de usuario' : role === 'ADMIN' && segment === 'aptos' && nestedId ? 'Revisar apto' : undefined}
       notice={permissionNotice}
       onDismissNotice={() => setPermissionNotice('')}
       onLogout={() => void handleLogout()}
@@ -87,7 +89,7 @@ export function RoleWorkspace({ role }: { role: UserRole }) {
     if (role === 'MEMBER' && segment === 'pagos') return <MemberPaymentsScreen/>
     if (role === 'MEMBER' && segment === 'apto-medico') return <MemberMedicalCertificateScreen/>
     if (role === 'MEMBER' && segment === 'entrenadores') return <TrainerDirectoryScreen/>
-    if (role === 'ADMIN' && segment === 'usuarios') return nestedId ? <UserDetailScreen id={nestedId}/> : <AdminUsersScreen/>
+    if (role === 'ADMIN' && segment === 'usuarios') return nestedId ? <UserDetailScreen id={nestedId} onMemberLoaded={setMemberDetail}/> : <AdminUsersScreen/>
     if (role === 'ADMIN' && segment === 'pagos') return <AdminPaymentsScreen/>
     if (role === 'ADMIN' && segment === 'sedes') return <AdminBranchesScreen/>
     if (role === 'ADMIN' && segment === 'aptos') return nestedId
