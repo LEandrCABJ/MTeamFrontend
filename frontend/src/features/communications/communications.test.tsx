@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSession, stubApi, testUser } from '../../test/test-utils'
 import { EventsScreen } from './EventsScreen'
@@ -36,8 +36,9 @@ describe('communications screens', () => {
     stubApi([{ path: '/news-posts', handler: () => ({ body: { items: [news], page: 1, limit: 12, total: 1 } }) }])
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
     expect(await screen.findByText('Feriado')).toBeInTheDocument()
-    expect(screen.getByText('Socios')).toBeInTheDocument()
-    expect(screen.getByText('Publicada')).toBeInTheDocument()
+    const row = screen.getByRole('row', { name: /Feriado/ })
+    expect(within(row).getByText('Socios')).toBeInTheDocument()
+    expect(within(row).getByText('Publicada')).toBeInTheDocument()
   })
 
   it('marks only an unread notification as read', async () => {

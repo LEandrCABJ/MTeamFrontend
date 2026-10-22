@@ -80,10 +80,9 @@ describe('NewsScreen', () => {
       } },
     ])
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
-    fireEvent.click(await screen.findByRole('button', { name: /Nueva novedad/ }))
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Nueva actividad' } })
     fireEvent.change(screen.getByLabelText('Contenido'), { target: { value: 'Información importante.' } })
-    fireEvent.change(screen.getByLabelText('Audiencia'), { target: { value: 'TRAINERS' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Entrenadores' }))
     fireEvent.click(screen.getByRole('button', { name: 'Guardar borrador' }))
 
     expect(await screen.findByRole('heading', { name: 'Nueva actividad' })).toBeInTheDocument()
@@ -99,7 +98,6 @@ describe('NewsScreen', () => {
       { method: 'POST', path: '/news-posts', handler: () => ({ status: 400, body: { message: 'El título ya existe.' } }) },
     ])
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
-    fireEvent.click(await screen.findByRole('button', { name: /Nueva novedad/ }))
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Duplicada' } })
     fireEvent.change(screen.getByLabelText('Contenido'), { target: { value: 'Contenido' } })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar borrador' }))
@@ -118,16 +116,18 @@ describe('NewsScreen', () => {
       } },
     ])
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
-    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('article') as HTMLElement
+    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
+    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
     fireEvent.click(within(card).getByRole('button', { name: 'Editar' }))
     expect(screen.getByRole('heading', { name: 'Editar novedad' })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Horario actualizado' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.queryByRole('heading', { name: 'Editar novedad' })).not.toBeInTheDocument()
 
+    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
     fireEvent.click(within(card).getByRole('button', { name: 'Editar' }))
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Horario actualizado' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(await screen.findByRole('heading', { name: 'Horario actualizado' })).toBeInTheDocument()
     expect(requestsTo(fetchStub, 'PATCH', '/news-posts/news-1')[0]?.body).toMatchObject({ title: 'Horario actualizado' })
   })
@@ -146,7 +146,8 @@ describe('NewsScreen', () => {
     ])
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
-    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('article') as HTMLElement
+    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
+    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
     fireEvent.click(within(card).getByRole('button', { name: action }))
 
     expect(confirm).toHaveBeenCalledWith(confirmation)
@@ -161,8 +162,9 @@ describe('NewsScreen', () => {
     ])
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
-    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('article') as HTMLElement
+    const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
 
+    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
     fireEvent.click(within(card).getByRole('button', { name: 'Publicar' }))
     expect(confirm).toHaveBeenCalledOnce()
     expect(requestsTo(fetchStub, 'PATCH', '/news-posts/news-1/status')).toHaveLength(0)
