@@ -34,7 +34,7 @@ describe('detalle de usuarios del administrador', () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
   it('navega desde el listado, conserva los filtros y muestra datos reales del socio', async () => {
-    stubApi([
+    stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },
       { path: '/users', handler: () => ({ body: { items: [{ id: 'user-1', firstName: 'Juan Manuel', lastName: 'Pérez', documentNumber: '40123456', email: 'juan@example.com', role: 'MEMBER', status: 'ACTIVE' }], page: 2, limit: 20, total: 21 } }) },
       { path: '/users/user-1', handler: () => ({ body: userDetail }) },
       { path: '/users/user-1/audit-logs', handler: () => ({ body: { items: [], page: 1, limit: 10, total: 0 } }) },
@@ -56,7 +56,7 @@ describe('detalle de usuarios del administrador', () => {
 
   it('usa filtros compactos en celular sin alterar la consulta del listado', async () => {
     setMobileViewport(true)
-    const fetchStub = stubApi([{ path: '/users', handler: (url) => ({ body: { items: [{ id: 'user-1', firstName: 'Juan Manuel', lastName: 'Pérez', documentNumber: '40123456', email: 'juan@example.com', role: 'MEMBER', status: 'ACTIVE' }], page: Number(url.searchParams.get('page') ?? 1), limit: 20, total: 1 } }) }])
+    const fetchStub = stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },{ path: '/users', handler: (url) => ({ body: { items: [{ id: 'user-1', firstName: 'Juan Manuel', lastName: 'Pérez', documentNumber: '40123456', email: 'juan@example.com', role: 'MEMBER', status: 'ACTIVE' }], page: Number(url.searchParams.get('page') ?? 1), limit: 20, total: 1 } }) }])
     renderWorkspace('/admin/usuarios')
 
     const filterToggle = await screen.findByRole('button', { name: 'Mostrar filtros' }, { timeout: 5000 })
@@ -71,7 +71,7 @@ describe('detalle de usuarios del administrador', () => {
 
   it('mantiene la cabecera móvil, la búsqueda completa y el acceso al detalle', async () => {
     setMobileViewport(true)
-    stubApi([{ path: '/users', handler: () => ({ body: { items: [{ id: 'user-1', firstName: 'Juan Manuel', lastName: 'Pérez', documentNumber: '40123456', email: 'juan@example.com', role: 'MEMBER', status: 'ACTIVE' }], page: 1, limit: 20, total: 1 } }) }])
+    stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },{ path: '/users', handler: () => ({ body: { items: [{ id: 'user-1', firstName: 'Juan Manuel', lastName: 'Pérez', documentNumber: '40123456', email: 'juan@example.com', role: 'MEMBER', status: 'ACTIVE' }], page: 1, limit: 20, total: 1 } }) }])
     renderWorkspace('/admin/usuarios')
 
     expect((await screen.findAllByRole('heading', { name: 'Usuarios' })).length).toBeGreaterThan(0)
@@ -84,7 +84,7 @@ describe('detalle de usuarios del administrador', () => {
 
   it('mantiene estados de error del detalle y permite reintentar', async () => {
     let attempts = 0
-    stubApi([
+    stubApi([{ path: '/access-attempts', handler: () => ({ body: { items: [], total: 0 } }) },
       { path: '/users/user-404', handler: () => { attempts += 1; return attempts === 1 ? { status: 404, body: { code: 'NOT_FOUND', message: 'El usuario no existe', details: null } } : { body: userDetail } } },
       { path: '/users/user-1/audit-logs', handler: () => ({ body: { items: [], page: 1, limit: 10, total: 0 } }) },
     ])
