@@ -19,6 +19,26 @@ afterEach(() => {
 function renderNews() { renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') }) }
 function publishButton() { return within(screen.getByLabelText('Título').closest('form')!).getByRole('button', { name: 'Publicar' }) }
 
+it('shows five columns with a visible draft status, empty publication date and direct editing', async () => {
+  stubApi([{ path: '/news-posts', handler: () => ({ body: { items: [POST], page: 1, limit: 12, total: 1 } }) }])
+  renderNews()
+  const row = await screen.findByRole('row', { name: /Comunicado del equipo/ })
+  expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['Título', 'Audiencia', 'Publicada', 'Estado', 'Acciones'])
+  expect(within(row).getByRole('cell', { name: '—' })).toBeInTheDocument()
+  expect(within(row).getByText('Borrador')).not.toHaveClass('visually-hidden')
+  fireEvent.click(within(row).getByRole('button', { name: `Editar ${POST.title}` }))
+  expect(screen.getByLabelText('Título')).toHaveValue(POST.title)
+  expect(screen.getByLabelText('Contenido')).toHaveValue(POST.content)
+})
+
+it('shows loading separately from an empty publication list', () => {
+  stubApi([{ path: '/news-posts', handler: () => ({ body: { items: [], page: 1, limit: 12, total: 0 } }) }])
+  renderNews()
+  expect(screen.getByRole('status')).toHaveTextContent('Cargando datos…')
+  expect(screen.queryByText('No hay novedades para los filtros seleccionados.')).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Nueva novedad' })).toBeInTheDocument()
+})
+
 it.each([POST.imageUrl, null])('removes image management and preserves the stored image when editing: %s', async (imageUrl) => {
   const currentPost = { ...POST, imageUrl }
   const fetchStub = stubApi([
@@ -26,7 +46,7 @@ it.each([POST.imageUrl, null])('removes image management and preserves the store
     { method: 'PATCH', path: '/news-posts/news-1', handler: () => ({ body: currentPost }) },
   ])
   renderNews()
-  fireEvent.click(await screen.findByRole('button', { name: POST.title }))
+  fireEvent.click(await screen.findByRole('button', { name: `Editar ${POST.title}` }))
   expect(screen.queryByLabelText(/Imagen/)).not.toBeInTheDocument()
   expect(document.querySelector('img')).toBeNull()
   fireEvent.change(screen.getByLabelText('Contenido'), { target: { value: 'Contenido actualizado' } })
@@ -62,7 +82,7 @@ it('keeps an edited draft if publishing fails and retries without creating anoth
   ])
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   renderNews()
-  fireEvent.click(await screen.findByRole('button', { name: POST.title }))
+  fireEvent.click(await screen.findByRole('button', { name: `Editar ${POST.title}` }))
   fireEvent.click(publishButton())
   expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo publicar.')
   expect(screen.getByLabelText('Título')).toHaveValue(POST.title)
@@ -76,7 +96,7 @@ it('keeps an edited draft if publishing fails and retries without creating anoth
 it('uses API search, audience and status filters', async () => {
   const fetchStub = stubApi([{ path: '/news-posts', handler: () => ({ body: { items: [POST], page: 1, limit: 12, total: 1 } }) }])
   renderNews()
-  await screen.findByRole('button', { name: POST.title })
+  await screen.findByRole('button', { name: `Editar ${POST.title}` })
   fireEvent.change(screen.getByRole('searchbox'), { target: { value: ' equipo ' } })
   fireEvent.change(screen.getByLabelText('Filtrar por audiencia'), { target: { value: 'TRAINERS' } })
   fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'INACTIVE' } })

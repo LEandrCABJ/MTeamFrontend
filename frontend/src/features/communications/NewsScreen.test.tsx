@@ -117,15 +117,13 @@ describe('NewsScreen', () => {
     ])
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
     const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
-    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
-    fireEvent.click(within(card).getByRole('button', { name: 'Editar' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Editar Horario de feriado' }))
     expect(screen.getByRole('heading', { name: 'Editar novedad' })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Horario actualizado' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.queryByRole('heading', { name: 'Editar novedad' })).not.toBeInTheDocument()
 
-    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
-    fireEvent.click(within(card).getByRole('button', { name: 'Editar' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Editar Horario de feriado' }))
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Horario actualizado' } })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(await screen.findByRole('heading', { name: 'Horario actualizado' })).toBeInTheDocument()

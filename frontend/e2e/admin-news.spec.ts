@@ -38,8 +38,16 @@ for (const width of [1440, 390, 320]) {
     if (width > 700) {
       await expect(page.locator('.app-sidebar').getByRole('link', { name: 'Novedades', exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(page.getByRole('table')).toBeVisible()
+      await expect(page.getByRole('columnheader')).toHaveText(['Título', 'Audiencia', 'Publicada', 'Estado', 'Acciones'])
       await expect(page.getByRole('heading', { name: 'Nueva novedad' })).toBeVisible()
       expect(await page.locator('.admin-news-layout').evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(2)
+      const listBox = (await page.locator('.admin-news-list').boundingBox())!
+      const editorBox = (await page.locator('.admin-news-editor').boundingBox())!
+      expect(listBox.width).toBeGreaterThan(editorBox.width)
+      expect(Math.abs(listBox.y - editorBox.y)).toBeLessThan(2)
+      const draftRow = page.getByRole('row', { name: /Comunicado de actividades 5/ })
+      await expect(draftRow.getByText('Borrador')).toBeVisible()
+      await expect(draftRow.getByRole('cell', { name: '—', exact: true })).toBeVisible()
     } else {
       await expect(page.getByRole('button', { name: 'Publicar una novedad' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/admin')
@@ -63,7 +71,7 @@ for (const width of [1440, 390, 320]) {
       await expect(page.getByRole('button', { name: 'Filtrar novedades' })).toBeFocused()
     }
     await expect(page.locator('[data-news-post]')).toHaveCount(5)
-    const editButton = page.getByRole('button', { name: 'Comunicado de actividades 1', exact: true })
+    const editButton = page.getByRole('button', { name: 'Editar Comunicado de actividades 1', exact: true })
     await editButton.click()
     await expect(page.getByRole('textbox', { name: 'Título', exact: true })).toHaveValue('Comunicado de actividades 1')
     await expect(page.getByLabel(/Imagen/)).toHaveCount(0)
