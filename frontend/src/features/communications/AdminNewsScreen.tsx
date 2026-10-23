@@ -77,6 +77,7 @@ export function AdminNewsScreen() {
     try {
       const updated = await backendApi.updateNewsPostStatus(post.id, nextStatus)
       if (editing?.id === post.id) setEditing(updated)
+      setNotice(nextStatus === 'INACTIVE' ? 'Novedad desactivada correctamente.' : 'Novedad publicada correctamente.')
       await reload()
     } catch (value) { setActionError(value instanceof Error ? value.message : 'No se pudo actualizar la novedad.') }
     finally { setIsUpdatingStatus(false) }
@@ -91,6 +92,7 @@ export function AdminNewsScreen() {
     <div className="admin-news-form-actions">
       <button type="submit" className="button button-secondary" disabled={isSaving || isUpdatingStatus}>{isSaving ? 'Guardando…' : editing && editing.status !== 'DRAFT' ? 'Guardar cambios' : 'Guardar borrador'}</button>
       {editing?.status !== 'PUBLISHED' && <button type="submit" value="publish" className="button button-primary" disabled={isSaving || isUpdatingStatus}>Publicar</button>}
+      {editing?.status === 'PUBLISHED' && <button type="button" className="button button-danger" disabled={isSaving || isUpdatingStatus} onClick={() => void changeStatus(editing, 'INACTIVE')}>Desactivar</button>}
     </div>
     {(editing || isMobile) && <button type="button" className="button button-secondary admin-news-cancel" disabled={isSaving} onClick={cancelForm}>Cancelar</button>}
   </form>
@@ -98,10 +100,6 @@ export function AdminNewsScreen() {
   function postActions(post: NewsPost) {
     return <div className="admin-news-row-actions">
       <button type="button" className="button button-secondary" aria-label={`Editar ${post.title}`} disabled={isSaving || isUpdatingStatus} onClick={() => startEdit(post)}>Editar</button>
-      <details className="admin-news-actions"><summary className="icon-action button-secondary" aria-label={`Acciones de ${post.title}`}><Icon name="more" size={20}/></summary><div>
-        {post.status !== 'PUBLISHED' && <button type="button" className="button button-primary" disabled={isSaving || isUpdatingStatus} onClick={() => void changeStatus(post, 'PUBLISHED')}>Publicar</button>}
-        {post.status === 'PUBLISHED' && <button type="button" className="button button-danger" disabled={isSaving || isUpdatingStatus} onClick={() => void changeStatus(post, 'INACTIVE')}>Desactivar</button>}
-      </div></details>
     </div>
   }
 

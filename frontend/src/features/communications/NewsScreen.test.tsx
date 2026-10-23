@@ -137,6 +137,10 @@ describe('NewsScreen', () => {
     let current = post({ status: currentStatus })
     const fetchStub = stubApi([
       { path: '/news-posts', handler: () => ({ body: page([current]) }) },
+      { method: 'PATCH', path: '/news-posts/news-1', handler: (_url, init) => {
+        current = post({ ...current, ...(JSON.parse(String(init?.body)) as Partial<NewsPost>) })
+        return { body: current }
+      } },
       { method: 'PATCH', path: '/news-posts/news-1/status', handler: (_url, init) => {
         current = post({ ...current, ...(JSON.parse(String(init?.body)) as Partial<NewsPost>) })
         return { body: current }
@@ -145,8 +149,8 @@ describe('NewsScreen', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
     const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
-    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
-    fireEvent.click(within(card).getByRole('button', { name: action }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Editar Horario de feriado' }))
+    fireEvent.click(screen.getByRole('button', { name: action }))
 
     expect(confirm).toHaveBeenCalledWith(confirmation)
     await waitFor(() => expect(requestsTo(fetchStub, 'PATCH', '/news-posts/news-1/status')[0]?.body).toEqual({ status: nextStatus }))
@@ -156,19 +160,20 @@ describe('NewsScreen', () => {
   it('no actualiza el estado cuando se cancela la confirmación y muestra errores del servidor', async () => {
     const fetchStub = stubApi([
       { path: '/news-posts', handler: () => ({ body: page([post({ status: 'DRAFT' })]) }) },
+      { method: 'PATCH', path: '/news-posts/news-1', handler: () => ({ body: post({ status: 'DRAFT' }) }) },
       { method: 'PATCH', path: '/news-posts/news-1/status', handler: () => ({ status: 503, body: { message: 'No se pudo publicar.' } }) },
     ])
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderWithSession(<NewsScreen isAdmin/>, { user: testUser('ADMIN') })
     const card = (await screen.findByRole('heading', { name: 'Horario de feriado' })).closest('[data-news-post]') as HTMLElement
 
-    fireEvent.click(within(card).getByLabelText('Acciones de Horario de feriado'))
-    fireEvent.click(within(card).getByRole('button', { name: 'Publicar' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Editar Horario de feriado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar' }))
     expect(confirm).toHaveBeenCalledOnce()
     expect(requestsTo(fetchStub, 'PATCH', '/news-posts/news-1/status')).toHaveLength(0)
 
     confirm.mockReturnValue(true)
-    fireEvent.click(within(card).getByRole('button', { name: 'Publicar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo publicar.')
   })
 })

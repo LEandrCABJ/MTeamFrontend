@@ -73,6 +73,21 @@ it('creates a published post with imageUrl null only after confirmation', async 
   expect(requestsTo(fetchStub, 'POST', '/news-posts')[0].body).toEqual({ title: POST.title, content: POST.content, audience: 'MEMBERS', imageUrl: null, status: 'PUBLISHED' })
 })
 
+it('keeps supported deactivation available from the published edit form', async () => {
+  const publishedPost = { ...POST, status: 'PUBLISHED' as const, publishedAt: '2026-09-06T12:00:00Z' }
+  const fetchStub = stubApi([
+    { path: '/news-posts', handler: () => ({ body: { items: [publishedPost], page: 1, limit: 12, total: 1 } }) },
+    { method: 'PATCH', path: '/news-posts/news-1/status', handler: () => ({ body: { ...publishedPost, status: 'INACTIVE' } }) },
+  ])
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderNews()
+  fireEvent.click(await screen.findByRole('button', { name: `Editar ${POST.title}` }))
+  fireEvent.click(screen.getByRole('button', { name: 'Desactivar' }))
+  expect(await screen.findByText('Novedad desactivada correctamente.')).toBeInTheDocument()
+  expect(requestsTo(fetchStub, 'PATCH', '/news-posts/news-1/status')[0].body).toEqual({ status: 'INACTIVE' })
+  expect(screen.queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument()
+})
+
 it('keeps an edited draft if publishing fails and retries without creating another post', async () => {
   let hasFailed = true
   const fetchStub = stubApi([
